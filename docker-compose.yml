@@ -1,0 +1,232 @@
+name: rebalance-lab
+
+x-kafka-image: &kafka-image apache/kafka:${KAFKA_VERSION:-4.1.2}
+
+x-controller-env: &controller-env
+  KAFKA_PROCESS_ROLES: controller
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENERS: CONTROLLER://:9093
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT
+  KAFKA_LOG_DIRS: /tmp/kraft-logs
+  KAFKA_HEAP_OPTS: -Xms256m -Xmx256m
+  CLUSTER_ID: T3909ktJSpOWKMsinavf8g
+
+x-broker-env: &broker-env
+  KAFKA_PROCESS_ROLES: broker
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_LOG_DIRS: /tmp/kraft-logs
+  KAFKA_HEAP_OPTS: -Xms512m -Xmx512m
+  CLUSTER_ID: T3909ktJSpOWKMsinavf8g
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 2
+  # 그룹 동작 관련 값은 4.1 기본값과 같지만 실험 조건을 드러내기 위해 명시한다.
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+  KAFKA_GROUP_CONSUMER_SESSION_TIMEOUT_MS: 45000
+  KAFKA_GROUP_CONSUMER_HEARTBEAT_INTERVAL_MS: 5000
+  KAFKA_GROUP_CONSUMER_ASSIGNORS: uniform,range
+  KAFKA_GROUP_CONSUMER_MIGRATION_POLICY: ${MIGRATION_POLICY:-bidirectional}
+
+x-controller: &controller
+  image: *kafka-image
+  restart: "no"
+  healthcheck:
+    test: ["CMD-SHELL", "nc -z localhost 9093"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+x-broker: &broker
+  image: *kafka-image
+  restart: "no"
+  depends_on:
+    controller-1: { condition: service_healthy }
+    controller-2: { condition: service_healthy }
+    controller-3: { condition: service_healthy }
+  healthcheck:
+    test: ["CMD-SHELL", "nc -z localhost 9092"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+x-app: &app
+  image: rebalance-lab-app:latest
+  profiles: ["lab"]
+  restart: "no"
+  stop_grace_period: 20s
+  volumes:
+    - ./results/runs:/runs
+  depends_on:
+    broker-1: { condition: service_healthy }
+    broker-2: { condition: service_healthy }
+    broker-3: { condition: service_healthy }
+
+x-app-env: &app-env
+  BOOTSTRAP_SERVERS: broker-1:9092,broker-2:9092,broker-3:9092
+  TOPIC: ${TOPIC:-lab-events}
+  RUN_DIR: /runs/${RUN_ID:-adhoc}
+  GROUP_ID: ${GROUP_ID:-lab-adhoc}
+
+x-consumer-env: &consumer-env
+  <<: *app-env
+  GROUP_PROTOCOL: ${GROUP_PROTOCOL:-classic}
+  ASSIGNOR: ${ASSIGNOR:-range}
+  REMOTE_ASSIGNOR: ${REMOTE_ASSIGNOR:-}
+  STATIC_MEMBERSHIP: ${STATIC_MEMBERSHIP:-false}
+  MAX_POLL_INTERVAL_MS: ${MAX_POLL_INTERVAL_MS:-30000}
+  MAX_POLL_RECORDS: ${MAX_POLL_RECORDS:-100}
+  PROCESS_MS: ${PROCESS_MS:-2}
+  SESSION_TIMEOUT_MS: ${SESSION_TIMEOUT_MS:-}
+
+services:
+  controller-1:
+    <<: *controller
+    hostname: controller-1
+    container_name: controller-1
+    environment:
+      <<: *controller-env
+      KAFKA_NODE_ID: 1
+
+  controller-2:
+    <<: *controller
+    hostname: controller-2
+    container_name: controller-2
+    environment:
+      <<: *controller-env
+      KAFKA_NODE_ID: 2
+
+  controller-3:
+    <<: *controller
+    hostname: controller-3
+    container_name: controller-3
+    environment:
+      <<: *controller-env
+      KAFKA_NODE_ID: 3
+
+  broker-1:
+    <<: *broker
+    hostname: broker-1
+    container_name: broker-1
+    ports: ["19092:19092"]
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: 4
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-1:9092,EXTERNAL://localhost:19092
+
+  broker-2:
+    <<: *broker
+    hostname: broker-2
+    container_name: broker-2
+    ports: ["19093:19093"]
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: 5
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:19093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-2:9092,EXTERNAL://localhost:19093
+
+  broker-3:
+    <<: *broker
+    hostname: broker-3
+    container_name: broker-3
+    ports: ["19094:19094"]
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: 6
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:19094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-3:9092,EXTERNAL://localhost:19094
+
+  producer:
+    <<: *app
+    hostname: producer
+    container_name: producer
+    command: ["producer"]
+    environment:
+      <<: *app-env
+      RATE: ${RATE:-600}
+      JAVA_TOOL_OPTIONS: -Xmx192m
+
+  lag-monitor:
+    <<: *app
+    hostname: lag-monitor
+    container_name: lag-monitor
+    command: ["lag-monitor"]
+    environment:
+      <<: *app-env
+      SAMPLE_MS: ${SAMPLE_MS:-1000}
+      JAVA_TOOL_OPTIONS: -Xmx128m
+
+  consumer-1:
+    <<: *app
+    hostname: consumer-1
+    container_name: consumer-1
+    command: ["consumer"]
+    ports: ["9101:9101"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-1
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9101 -Dcom.sun.management.jmxremote.rmi.port=9101 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+  consumer-2:
+    <<: *app
+    hostname: consumer-2
+    container_name: consumer-2
+    command: ["consumer"]
+    ports: ["9102:9102"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-2
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9102 -Dcom.sun.management.jmxremote.rmi.port=9102 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+  consumer-3:
+    <<: *app
+    hostname: consumer-3
+    container_name: consumer-3
+    command: ["consumer"]
+    ports: ["9103:9103"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-3
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9103 -Dcom.sun.management.jmxremote.rmi.port=9103 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+  consumer-4:
+    <<: *app
+    hostname: consumer-4
+    container_name: consumer-4
+    command: ["consumer"]
+    ports: ["9104:9104"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-4
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9104 -Dcom.sun.management.jmxremote.rmi.port=9104 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+  consumer-5:
+    <<: *app
+    hostname: consumer-5
+    container_name: consumer-5
+    command: ["consumer"]
+    ports: ["9105:9105"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-5
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9105 -Dcom.sun.management.jmxremote.rmi.port=9105 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+  consumer-6:
+    <<: *app
+    hostname: consumer-6
+    container_name: consumer-6
+    command: ["consumer"]
+    ports: ["9106:9106"]
+    environment:
+      <<: *consumer-env
+      MEMBER_NAME: consumer-6
+      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9106 -Dcom.sun.management.jmxremote.rmi.port=9106 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost

@@ -1,0 +1,7 @@
+results/runs/*
+!results/runs/.gitkeep
+lab-app/target/
+.idea/
+.vscode/
+.DS_Store
+__pycache__/
