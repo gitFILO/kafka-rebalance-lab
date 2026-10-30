@@ -1,6 +1,6 @@
 # 04. 마이그레이션 실습: classic ↔ consumer
 
-운영 중인 classic 그룹을 중단 없이 consumer 프로토콜로 옮기고, 혼합 상태의 동작을 측정한 뒤 다시 classic으로 되돌린다. 산출물은 [마이그레이션 런북](templates/migration-runbook.md)이다.
+운영 중인 classic 그룹을 중단 없이 consumer 프로토콜로 옮기고, 혼합 상태의 동작을 측정한 뒤 다시 classic으로 되돌린다. 산출물은 [마이그레이션 런북](../templates/migration-runbook.md)이다.
 
 ## 1. 배경: 브로커가 그룹을 전환하는 조건
 
@@ -68,8 +68,8 @@ consumer-1의 `control/consumer-1.protocol`에 `consumer`를 쓰고 재시작한
 
 ```bash
 G=lab-YYYYMMDD-HHMMSS-migration   # status 첫 줄의 group 값
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --state
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --members --verbose
+docker exec -e KAFKA_OPTS= broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --state
+docker exec -e KAFKA_OPTS= broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --members --verbose
 docker logs broker-2 2>&1 | grep -F "$G" | tail -30    # 코디네이터 브로커로 바꾼다
 ```
 
@@ -150,4 +150,4 @@ consumer-1부터 차례로 classic으로 되돌린다. 마지막 consumer 멤버
 
 ## 4. 런북 작성
 
-실습이 끝나면 [templates/migration-runbook.md](templates/migration-runbook.md)를 `results/migration-runbook.md`로 복사해 채운다. 런북에는 이 실습에서 직접 본 로그 문구, 상태 값, 측정값을 근거로 적는다. 실습에서 확인하지 않은 항목은 "미확인"으로 남긴다.
+실습이 끝나면 [templates/migration-runbook.md](../templates/migration-runbook.md)를 `results/migration-runbook.md`로 복사해 채운다. 런북에는 이 실습에서 직접 본 로그 문구, 상태 값, 측정값을 근거로 적는다. 실습에서 확인하지 않은 항목은 "미확인"으로 남긴다.

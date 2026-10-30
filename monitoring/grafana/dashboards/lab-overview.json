@@ -1,0 +1,1455 @@
+{
+ "uid": "lab-overview",
+ "title": "Lab / Overview",
+ "tags": [
+  "kafka-rebalance-lab"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 41,
+ "version": 1,
+ "editable": true,
+ "refresh": "5s",
+ "time": {
+  "from": "now-15m",
+  "to": "now"
+ },
+ "annotations": {
+  "list": [
+   {
+    "builtIn": 1,
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "hide": true,
+    "iconColor": "rgba(0, 211, 255, 1)",
+    "name": "Annotations & Alerts",
+    "type": "dashboard"
+   },
+   {
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "iconColor": "orange",
+    "name": "lab markers",
+    "target": {
+     "type": "tags",
+     "tags": [
+      "lab"
+     ],
+     "matchAny": true,
+     "limit": 500
+    }
+   }
+  ]
+ },
+ "links": [
+  {
+   "title": "Overview",
+   "type": "link",
+   "url": "/d/lab-overview"
+  },
+  {
+   "title": "Cluster",
+   "type": "link",
+   "url": "/d/lab-cluster"
+  },
+  {
+   "title": "Clients",
+   "type": "link",
+   "url": "/d/lab-clients"
+  }
+ ],
+ "panels": [
+  {
+   "type": "row",
+   "title": "클러스터 상태",
+   "id": 2,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Active controller",
+   "description": "정상은 1. 0이면 쿼럼 상실",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 0
+       },
+       {
+        "color": "green",
+        "value": 1
+       },
+       {
+        "color": "red",
+        "value": 2
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_controller_kafkacontroller_activecontrollercount)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Brokers up",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 0
+       },
+       {
+        "color": "green",
+        "value": 3
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(up{job=\"broker\"})",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 3,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Offline partitions",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_controller_kafkacontroller_offlinepartitionscount)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 6,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Under-replicated",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_server_replicamanager_underreplicatedpartitions)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 9,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Under min ISR",
+   "description": "이 파티션들은 acks=all 쓰기가 NotEnoughReplicas로 실패한다",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_server_replicamanager_underminisrpartitioncount)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Fenced brokers",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_controller_kafkacontroller_fencedbrokercount)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 8,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 15,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Offline log dirs",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(kafka_log_logmanager_offlinelogdirectorycount)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 18,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Min disk free",
+   "description": "브로커 데이터 볼륨 중 가장 적은 여유율",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 0
+       },
+       {
+        "color": "orange",
+        "value": 10
+       },
+       {
+        "color": "green",
+        "value": 25
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "min(lab_disk_usablebytes / lab_disk_totalbytes) * 100",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 21,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   }
+  },
+  {
+   "type": "row",
+   "title": "흐름: 생산 → 브로커 → 소비",
+   "id": 11,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Producer send / ack / fail / skip (msg/s)",
+   "description": "skipped는 send()가 막혀 상류 요청을 받지 못한 분량",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(lab_producer_senttotal[30s])",
+     "legendFormat": "sent",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(lab_producer_ackedtotal[30s])",
+     "legendFormat": "acked",
+     "refId": "B",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(lab_producer_failedtotal[30s])",
+     "legendFormat": "failed",
+     "refId": "C",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(lab_producer_skippedtotal[30s])",
+     "legendFormat": "skipped(backpressure)",
+     "refId": "D",
+     "interval": "5s"
+    }
+   ],
+   "id": 12,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Broker messages in (msg/s)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "normal"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_messagesin_total{topic=\"lab-events\"}[30s]))",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 13,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 6,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Consumer processed (msg/s)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "normal"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (rate(lab_consumer_processedtotal[30s]))",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 14,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 6,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "row",
+   "title": "컨슈머 그룹",
+   "id": 15,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 13,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "state-timeline",
+   "title": "Group state",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "showValue": "never",
+    "mergeValues": true,
+    "rowHeight": 0.8
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (state) (lab_group_state_active) == 1",
+     "legendFormat": "{{state}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 16,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 24,
+    "h": 4
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Committed lag: total / max partition",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_group_totallag",
+     "legendFormat": "total",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_group_maxpartitionlag",
+     "legendFormat": "max partition",
+     "refId": "B",
+     "interval": "5s"
+    }
+   ],
+   "id": 17,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 18,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Committed lag by partition",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_partition_lag",
+     "legendFormat": "p{{partition}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 18,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 18,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Members / assigned partitions / epoch",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_group_members",
+     "legendFormat": "members",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_group_assignedpartitions",
+     "legendFormat": "assigned",
+     "refId": "B",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_group_groupepoch",
+     "legendFormat": "group epoch",
+     "refId": "C",
+     "interval": "5s"
+    }
+   ],
+   "id": 19,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 18,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Assigned partitions per member",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "normal"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "lab_consumer_assignedpartitions",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 20,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 25,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Rebalance callbacks (per 1m)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (increase(lab_consumer_revokedtotal[1m]))",
+     "legendFormat": "revoked {{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (increase(lab_consumer_losttotal[1m]))",
+     "legendFormat": "lost {{instance}}",
+     "refId": "B",
+     "interval": "5s"
+    }
+   ],
+   "id": 21,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 25,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Commit failures / errors / poison (per 1m)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (increase(lab_consumer_commitfailedtotal[1m]))",
+     "legendFormat": "commit failed {{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (increase(lab_consumer_errortotal[1m]))",
+     "legendFormat": "error {{instance}}",
+     "refId": "B",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (increase(lab_consumer_poisonfailtotal[1m]))",
+     "legendFormat": "poison fail {{instance}}",
+     "refId": "C",
+     "interval": "5s"
+    }
+   ],
+   "id": 22,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 25,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "row",
+   "title": "지연",
+   "id": 23,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Produce p99 by broker (ms)",
+   "description": "브로커가 Produce 요청을 받아 응답할 때까지. acks=all이면 복제 대기 포함",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "kafka_network_requestmetrics_totaltimems{request=\"Produce\",quantile=\"0.99\"}",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 24,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 33,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Consumer fetch p99 by broker (ms)",
+   "description": "fetch.max.wait.ms(500ms) 대기가 포함된다",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "kafka_network_requestmetrics_totaltimems{request=\"FetchConsumer\",quantile=\"0.99\"}",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 25,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 33,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Producer request latency (ms)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "kafka_producer_producer_metrics_request_latency_avg",
+     "legendFormat": "avg",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "kafka_producer_producer_metrics_request_latency_max",
+     "legendFormat": "max",
+     "refId": "B",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "kafka_producer_producer_metrics_record_queue_time_avg",
+     "legendFormat": "queue avg",
+     "refId": "C",
+     "interval": "5s"
+    }
+   ],
+   "id": 26,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 33,
+    "w": 8,
+    "h": 7
+   }
+  }
+ ]
+}

@@ -78,9 +78,9 @@
 
 ```bash
 G=lab-<RUN_ID>   # run 시작 시 출력되는 group 값
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --state
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --members --verbose
-docker exec broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --list --type
+docker exec -e KAFKA_OPTS= broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --state
+docker exec -e KAFKA_OPTS= broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --describe --group $G --members --verbose
+docker exec -e KAFKA_OPTS= broker-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server broker-1:9092 --list --type
 ```
 
 - `--state`: classic은 `ASSIGNMENT-STRATEGY`에 클라이언트 할당자 이름, consumer는 서버 할당자 이름과 `GROUP-EPOCH`, `TARGET-ASSIGNMENT-EPOCH`가 나온다.

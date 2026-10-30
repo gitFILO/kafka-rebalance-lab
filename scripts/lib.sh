@@ -39,7 +39,8 @@ now_ms() {
 kafka_bin() {
   local tool="$1"
   shift
-  docker exec broker-1 "/opt/kafka/bin/$tool" "$@"
+  # 브로커의 KAFKA_OPTS(javaagent)를 상속하면 CLI가 9404 포트 충돌로 종료된다.
+  docker exec -e KAFKA_OPTS= broker-1 "/opt/kafka/bin/$tool" "$@"
 }
 
 load_setting() {
@@ -91,9 +92,26 @@ resume_run() {
   export RUN_ID GROUP_ID GROUP_PROTOCOL ASSIGNOR REMOTE_ASSIGNOR STATIC_MEMBERSHIP RATE PROCESS_MS MAX_POLL_INTERVAL_MS MAX_POLL_RECORDS
 }
 
+GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
+
+# Grafana 어노테이션. 블라인드 훈련(chaos.sh)에서는 정답이 드러나므로 LAB_ANNOTATE=0으로 끈다.
+annotate() {
+  [ "${LAB_ANNOTATE:-1}" = 1 ] || return 0
+  local text="$1" tags="${2:-lab}" ts
+  ts="$(now_ms)"
+  python3 - "$GRAFANA_URL" "$ts" "$text" "$tags" <<'PY' >/dev/null 2>&1 || true
+import json, sys, urllib.request
+url, ts, text, tags = sys.argv[1:5]
+body = json.dumps({"time": int(ts), "text": text, "tags": tags.split(",")}).encode()
+req = urllib.request.Request(url + "/api/annotations", data=body, headers={"Content-Type": "application/json"})
+urllib.request.urlopen(req, timeout=3)
+PY
+}
+
 mark() {
   echo "$(now_ms),$1" >> "$RUN_DIR_HOST/markers.csv"
   log "MARK $1"
+  annotate "$1" "lab,${RUN_ID:-adhoc}"
 }
 
 require_cluster() {

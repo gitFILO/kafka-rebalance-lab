@@ -1,0 +1,38 @@
+# producer, consumer, lag-monitor 공용 JMX exporter 규칙
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  - pattern: 'kafka.(consumer|producer|admin)<type=(.+), client-id=(.+), topic=(.+), partition=(.+)><>([^:]+)'
+    name: kafka_$1_$2_$6
+    type: GAUGE
+    labels:
+      client_id: "$3"
+      topic: "$4"
+      partition: "$5"
+  - pattern: 'kafka.(consumer|producer|admin)<type=(.+), client-id=(.+), topic=(.+)><>([^:]+)'
+    name: kafka_$1_$2_$5
+    type: GAUGE
+    labels:
+      client_id: "$3"
+      topic: "$4"
+  - pattern: 'kafka.(consumer|producer|admin)<type=(.+), client-id=(.+), node-id=(.+)><>([^:]+)'
+    name: kafka_$1_$2_$5
+    type: GAUGE
+    labels:
+      client_id: "$3"
+      node_id: "$4"
+  - pattern: 'kafka.(consumer|producer|admin)<type=(.+), client-id=(.+)><>([^:]+)'
+    name: kafka_$1_$2_$4
+    type: GAUGE
+    labels:
+      client_id: "$3"
+
+  # lab-app 자체 지표
+  - pattern: 'lab<type=(.+), (.+)=(.+)><>(\w+)'
+    name: lab_$1_$4
+    type: GAUGE
+    labels:
+      "$2": "$3"
+  - pattern: 'lab<type=(.+)><>(\w+)'
+    name: lab_$1_$2
+    type: GAUGE

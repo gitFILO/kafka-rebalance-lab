@@ -1,0 +1,77 @@
+# controller, broker 공용 JMX exporter 규칙
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  # 유휴율은 meter의 Count가 아니라 rate가 의미 있는 값이다.
+  - pattern: 'kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>OneMinuteRate'
+    name: kafka_server_kafkarequesthandlerpool_requesthandleravgidlepercent
+    type: GAUGE
+
+  # Yammer meter: *PerSec
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+), (.+)=(.+)><>Count'
+    name: kafka_$1_$2_$3_total
+    type: COUNTER
+    labels:
+      "$4": "$5"
+      "$6": "$7"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+)><>Count'
+    name: kafka_$1_$2_$3_total
+    type: COUNTER
+    labels:
+      "$4": "$5"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)PerSec\w*><>Count'
+    name: kafka_$1_$2_$3_total
+    type: COUNTER
+
+  # Yammer gauge
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Value'
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      "$4": "$5"
+      "$6": "$7"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Value'
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      "$4": "$5"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)><>Value'
+    name: kafka_$1_$2_$3
+    type: GAUGE
+
+  # Yammer histogram/timer
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>(\d+)thPercentile'
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      "$4": "$5"
+      quantile: "0.$6"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)><>(\d+)thPercentile'
+    name: kafka_$1_$2_$3
+    type: GAUGE
+    labels:
+      quantile: "0.$4"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Count'
+    name: kafka_$1_$2_$3_count
+    type: COUNTER
+    labels:
+      "$4": "$5"
+  - pattern: 'kafka.(\w+)<type=(.+), name=(.+)><>Count'
+    name: kafka_$1_$2_$3_count
+    type: COUNTER
+
+  # Kafka metrics(KafkaMetric) 형식: raft-metrics, group-coordinator-metrics 등
+  - pattern: 'kafka.(\w+)<type=(.+), (.+)=(.+), (.+)=(.+)><>([a-z0-9-]+)'
+    name: kafka_$1_$2_$7
+    type: GAUGE
+    labels:
+      "$3": "$4"
+      "$5": "$6"
+  - pattern: 'kafka.(\w+)<type=(.+), (.+)=(.+)><>([a-z0-9-]+)'
+    name: kafka_$1_$2_$5
+    type: GAUGE
+    labels:
+      "$3": "$4"
+  - pattern: 'kafka.(\w+)<type=(.+)><>([a-z0-9-]+)'
+    name: kafka_$1_$2_$3
+    type: GAUGE

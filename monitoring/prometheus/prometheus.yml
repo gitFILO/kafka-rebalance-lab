@@ -1,0 +1,56 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 4s
+  evaluation_interval: 5s
+
+# 컨테이너 재생성으로 IP가 다른 컨테이너에 재할당돼도 엉뚱한 대상을 수집하지 않도록 매번 DNS로 IP를 찾는다.
+scrape_configs:
+  - job_name: controller
+    dns_sd_configs:
+      - names: [controller-1, controller-2, controller-3]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: &instance-from-name
+      - source_labels: [__meta_dns_name]
+        target_label: instance
+
+  - job_name: broker
+    dns_sd_configs:
+      - names: [broker-1, broker-2, broker-3]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: *instance-from-name
+
+  - job_name: consumer
+    dns_sd_configs:
+      - names: [consumer-1, consumer-2, consumer-3, consumer-4, consumer-5, consumer-6]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: *instance-from-name
+
+  - job_name: producer
+    dns_sd_configs:
+      - names: [producer]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: *instance-from-name
+
+  - job_name: lag-monitor
+    dns_sd_configs:
+      - names: [lag-monitor]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: *instance-from-name
+
+  - job_name: disk-monitor
+    dns_sd_configs:
+      - names: [disk-monitor]
+        type: A
+        port: 9404
+        refresh_interval: 5s
+    relabel_configs: *instance-from-name

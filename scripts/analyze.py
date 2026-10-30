@@ -4,7 +4,7 @@
   analyze.py run <run_dir>        한 run을 분석해 summary.json, summary.md를 쓴다
   analyze.py table [--runs DIR]   run별 summary.json을 모아 5x4 결과표(markdown)를 출력한다
 
-지표 정의는 docs/02-measurement.md 참고.
+지표 정의는 docs/stage1-rebalance/01-measurement.md 참고.
 """
 import argparse
 import csv
@@ -328,16 +328,45 @@ def table_cmd(runs_dir):
         print(f"- {setting} × {scenario}: `{s['run_id']}`")
 
 
+def gaps_cmd(run_dir):
+    """처리 기록의 파티션별 오프셋 구멍과 중복. 장애 훈련의 유실·재처리 판정에 쓴다."""
+    seen = defaultdict(int)
+    for f in sorted(run_dir.glob("processed-*.csv")):
+        for row in read_csv(f):
+            seen[(int(row["partition"]), int(row["offset"]))] += 1
+    offsets = defaultdict(set)
+    for (p, o) in seen:
+        offsets[p].add(o)
+    total_missing = 0
+    total_dup = sum(c - 1 for c in seen.values() if c > 1)
+    for p in sorted(offsets):
+        os_ = sorted(offsets[p])
+        holes = []
+        for a, b in zip(os_, os_[1:]):
+            if b - a > 1:
+                holes.append((a + 1, b - 1))
+        missing = sum(b - a + 1 for a, b in holes)
+        total_missing += missing
+        dup = sum(c - 1 for (pp, _), c in seen.items() if pp == p and c > 1)
+        ranges = ", ".join(f"{a}-{b}" for a, b in holes[:3]) + (" ..." if len(holes) > 3 else "")
+        print(f"p{p:<3} processed={len(os_):<7} missing={missing:<6} duplicates={dup:<6} {ranges}")
+    print(f"total_missing={total_missing} total_duplicates={total_dup}")
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("run_dir", type=Path)
+    g = sub.add_parser("gaps")
+    g.add_argument("run_dir", type=Path)
     t = sub.add_parser("table")
     t.add_argument("--runs", type=Path, default=LAB_ROOT / "results" / "runs")
     a = p.parse_args()
     if a.cmd == "run":
         run_cmd(a.run_dir)
+    elif a.cmd == "gaps":
+        gaps_cmd(a.run_dir)
     else:
         table_cmd(a.runs)
 

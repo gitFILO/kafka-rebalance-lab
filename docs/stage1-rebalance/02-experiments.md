@@ -4,11 +4,11 @@
 
 ## 0. 진행 순서
 
-1. `./scripts/cluster.sh up`으로 클러스터를 띄우고 [01-environment.md](01-environment.md)의 확인 항목을 본다.
+1. `./scripts/cluster.sh up`으로 클러스터를 띄우고 [01-environment.md](../01-environment.md)의 확인 항목을 본다.
 2. 시나리오 하나를 고르고, 5개 설정을 연달아 실행한다. 같은 시나리오끼리 이어서 보면 설정 간 차이가 눈에 잘 들어온다.
 3. run이 끝날 때마다 출력되는 `summary.md`를 보고, 아래 "확인할 것"에 대한 답을 메모한다. 숫자가 예상과 다르면 `events-*.csv`와 `broker-group-*.log`에서 원인을 찾는다.
 4. 4개 시나리오를 모두 마치면 같은 매트릭스를 1~2회 더 돌린다. 하트비트 주기 때문에 1회 측정값은 수 초씩 흔들린다.
-5. `python3 scripts/analyze.py table` 출력을 [results/RESULTS.md](../results/RESULTS.md)에 옮기고 해석을 쓴다.
+5. `python3 scripts/analyze.py table` 출력을 [results/RESULTS.md](../../results/RESULTS.md)에 옮기고 해석을 쓴다.
 
 소요 시간(기본 파라미터): rolling-restart 약 5분, kill9·stall·scale-out 각 약 2분 30초. 매트릭스 1회에 약 60분 걸린다.
 
@@ -125,7 +125,7 @@ run마다 새 group id(`lab-<RUN_ID>`)를 쓴다. 이전 run의 커밋 오프셋
 python3 scripts/analyze.py table > /tmp/table.md
 ```
 
-출력에는 측정 항목별로 5×4 표 네 개와 각 칸의 출처 run ID가 있다. [results/RESULTS.md](../results/RESULTS.md)에 옮긴 뒤 표 아래 해석 항목을 채운다. 반복 측정한 경우 `table`은 칸마다 가장 최근 run만 보여 주므로, 중앙값은 `results/runs/*/summary.json`에서 직접 골라 적는다.
+출력에는 측정 항목별로 5×4 표 네 개와 각 칸의 출처 run ID가 있다. [results/RESULTS.md](../../results/RESULTS.md)에 옮긴 뒤 표 아래 해석 항목을 채운다. 반복 측정한 경우 `table`은 칸마다 가장 최근 run만 보여 주므로, 중앙값은 `results/runs/*/summary.json`에서 직접 골라 적는다.
 
 해석은 "숫자 → 메커니즘 → 코드" 순서로 쓴다.
 

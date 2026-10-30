@@ -2,7 +2,7 @@
 
 > 환경: Kafka 4.1.2, controller 3 / broker 3, 파티션 12, consumer 6, RATE=600, PROCESS_MS=2, MAX_POLL_INTERVAL_MS=30000
 > 측정 횟수: 셀당 _회, 표의 값은 중앙값
-> 지표 정의: [docs/02-measurement.md](../docs/02-measurement.md)
+> 지표 정의: [docs/stage1-rebalance/01-measurement.md](../docs/stage1-rebalance/01-measurement.md)
 
 `python3 scripts/analyze.py table` 출력을 아래에 붙인다.
 

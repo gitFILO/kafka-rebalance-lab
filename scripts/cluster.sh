@@ -29,12 +29,33 @@ create_topic() {
   log "topic $TOPIC ready (partitions=$PARTITIONS, rf=3, min.insync.replicas=2)"
 }
 
-cmd_up() {
-  log "build lab app image"
+MONITORING_SERVICES="prometheus grafana disk-monitor"
+
+build_images() {
+  log "build images (kafka+jmx exporter, lab app)"
+  docker build -q --build-arg KAFKA_VERSION="${KAFKA_VERSION:-4.1.2}" \
+    -t "rebalance-lab-kafka:${KAFKA_VERSION:-4.1.2}" "$LAB_ROOT/docker/kafka" >/dev/null
   docker build -q -t rebalance-lab-app:latest "$LAB_ROOT/lab-app" >/dev/null
+  docker pull -q alpine:3.20 >/dev/null
+}
+
+wait_monitoring() {
+  local deadline=$(( $(date +%s) + 90 ))
+  until curl -sf http://localhost:9090/-/ready >/dev/null && curl -sf http://localhost:3000/api/health >/dev/null; do
+    [ "$(date +%s)" -ge "$deadline" ] && die "prometheus/grafana not ready in 90s"
+    sleep 2
+  done
+  log "prometheus http://localhost:9090, grafana http://localhost:3000"
+}
+
+cmd_up() {
+  build_images
+  log "start $MONITORING_SERVICES"
+  compose up -d $MONITORING_SERVICES >/dev/null
   log "start $CLUSTER_SERVICES"
   compose up -d $CLUSTER_SERVICES >/dev/null
   wait_healthy
+  wait_monitoring
   create_topic
   cmd_status
 }
@@ -52,6 +73,17 @@ cmd_status() {
   echo
   echo "== topic"
   kafka_bin kafka-topics.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --describe --topic "$TOPIC" 2>/dev/null || true
+  echo
+  echo "== prometheus targets"
+  curl -s http://localhost:9090/api/v1/targets 2>/dev/null | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)["data"]["activeTargets"]
+except Exception:
+    sys.exit(0)
+for t in sorted(data, key=lambda t: (t["labels"]["job"], t["labels"]["instance"])):
+    print("%-12s %-14s %s" % (t["labels"]["job"], t["labels"]["instance"], t["health"]))
+' || true
 }
 
 cmd_down() {

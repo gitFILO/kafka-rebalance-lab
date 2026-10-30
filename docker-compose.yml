@@ -1,7 +1,5 @@
 name: rebalance-lab
 
-x-kafka-image: &kafka-image apache/kafka:${KAFKA_VERSION:-4.1.2}
-
 x-controller-env: &controller-env
   KAFKA_PROCESS_ROLES: controller
   KAFKA_CONTROLLER_QUORUM_VOTERS: 1@controller-1:9093,2@controller-2:9093,3@controller-3:9093
@@ -10,6 +8,7 @@ x-controller-env: &controller-env
   KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT
   KAFKA_LOG_DIRS: /tmp/kraft-logs
   KAFKA_HEAP_OPTS: -Xms256m -Xmx256m
+  KAFKA_OPTS: -javaagent:/opt/jmx/agent.jar=9404:/opt/jmx-config/kafka.yml
   CLUSTER_ID: T3909ktJSpOWKMsinavf8g
 
 x-broker-env: &broker-env
@@ -18,15 +17,18 @@ x-broker-env: &broker-env
   KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
   KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
   KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-  KAFKA_LOG_DIRS: /tmp/kraft-logs
+  KAFKA_LOG_DIRS: /var/lib/kafka-data/logs
   KAFKA_HEAP_OPTS: -Xms512m -Xmx512m
+  KAFKA_OPTS: -javaagent:/opt/jmx/agent.jar=9404:/opt/jmx-config/kafka.yml
   CLUSTER_ID: T3909ktJSpOWKMsinavf8g
   KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
   KAFKA_DEFAULT_REPLICATION_FACTOR: 3
   KAFKA_MIN_INSYNC_REPLICAS: 2
   KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 12
   KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
   KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS: 12
   KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 3
   KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 2
   # 그룹 동작 관련 값은 4.1 기본값과 같지만 실험 조건을 드러내기 위해 명시한다.
@@ -35,10 +37,19 @@ x-broker-env: &broker-env
   KAFKA_GROUP_CONSUMER_HEARTBEAT_INTERVAL_MS: 5000
   KAFKA_GROUP_CONSUMER_ASSIGNORS: uniform,range
   KAFKA_GROUP_CONSUMER_MIGRATION_POLICY: ${MIGRATION_POLICY:-bidirectional}
+  # 장애 훈련용. 처리량에 맞춰 축소한 값이다(docs/stage2-drills/README.md "축척").
+  KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 30000
+  # 256MB 디스크에서 몇 시간씩 실험해도 차지 않도록 1시간만 보존한다.
+  KAFKA_LOG_RETENTION_MS: ${LOG_RETENTION_MS:-3600000}
+  KAFKA_LOG_ROLL_MS: 60000
+  KAFKA_OFFSETS_RETENTION_MINUTES: ${OFFSETS_RETENTION_MINUTES:-10080}
+  KAFKA_OFFSETS_RETENTION_CHECK_INTERVAL_MS: ${OFFSETS_RETENTION_CHECK_INTERVAL_MS:-600000}
 
 x-controller: &controller
-  image: *kafka-image
+  image: rebalance-lab-kafka:${KAFKA_VERSION:-4.1.2}
   restart: "no"
+  volumes:
+    - ./monitoring/jmx:/opt/jmx-config:ro
   healthcheck:
     test: ["CMD-SHELL", "nc -z localhost 9093"]
     interval: 5s
@@ -46,8 +57,10 @@ x-controller: &controller
     retries: 30
 
 x-broker: &broker
-  image: *kafka-image
+  image: rebalance-lab-kafka:${KAFKA_VERSION:-4.1.2}
   restart: "no"
+  volumes:
+    - ./monitoring/jmx:/opt/jmx-config:ro
   depends_on:
     controller-1: { condition: service_healthy }
     controller-2: { condition: service_healthy }
@@ -65,6 +78,7 @@ x-app: &app
   stop_grace_period: 20s
   volumes:
     - ./results/runs:/runs
+    - ./monitoring/jmx:/app/jmx-config:ro
   depends_on:
     broker-1: { condition: service_healthy }
     broker-2: { condition: service_healthy }
@@ -86,6 +100,11 @@ x-consumer-env: &consumer-env
   MAX_POLL_RECORDS: ${MAX_POLL_RECORDS:-100}
   PROCESS_MS: ${PROCESS_MS:-2}
   SESSION_TIMEOUT_MS: ${SESSION_TIMEOUT_MS:-}
+  AUTO_OFFSET_RESET: ${AUTO_OFFSET_RESET:-latest}
+  ISOLATION_LEVEL: ${ISOLATION_LEVEL:-read_uncommitted}
+  POISON_POLICY: ${POISON_POLICY:-retry}
+  POISON_RETRIES: ${POISON_RETRIES:-10}
+  POISON_BACKOFF_MS: ${POISON_BACKOFF_MS:-}
 
 services:
   controller-1:
@@ -116,6 +135,9 @@ services:
     <<: *broker
     hostname: broker-1
     container_name: broker-1
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - broker-1-data:/var/lib/kafka-data
     ports: ["19092:19092"]
     environment:
       <<: *broker-env
@@ -127,6 +149,9 @@ services:
     <<: *broker
     hostname: broker-2
     container_name: broker-2
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - broker-2-data:/var/lib/kafka-data
     ports: ["19093:19093"]
     environment:
       <<: *broker-env
@@ -138,12 +163,61 @@ services:
     <<: *broker
     hostname: broker-3
     container_name: broker-3
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - broker-3-data:/var/lib/kafka-data
     ports: ["19094:19094"]
     environment:
       <<: *broker-env
       KAFKA_NODE_ID: 6
       KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:19094
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-3:9092,EXTERNAL://localhost:19094
+
+  disk-monitor:
+    image: rebalance-lab-app:latest
+    hostname: disk-monitor
+    container_name: disk-monitor
+    restart: "no"
+    command: ["disk-monitor"]
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx48m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml
+    volumes:
+      - ./monitoring/jmx:/app/jmx-config:ro
+      - broker-1-data:/disks/broker-1:ro
+      - broker-2-data:/disks/broker-2:ro
+      - broker-3-data:/disks/broker-3:ro
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    hostname: prometheus
+    container_name: prometheus
+    restart: "no"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=3d
+      - --web.enable-lifecycle
+    ports: ["9090:9090"]
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana-oss:12.1.1
+    hostname: grafana
+    container_name: grafana
+    restart: "no"
+    ports: ["3000:3000"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/lab-overview.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
   producer:
     <<: *app
@@ -153,7 +227,12 @@ services:
     environment:
       <<: *app-env
       RATE: ${RATE:-600}
-      JAVA_TOOL_OPTIONS: -Xmx192m
+      VALUE_BYTES: ${VALUE_BYTES:-0}
+      BUFFER_MEMORY: ${BUFFER_MEMORY:-33554432}
+      MAX_REQUEST_SIZE: ${MAX_REQUEST_SIZE:-1048576}
+      TRANSACTIONAL: ${TRANSACTIONAL:-false}
+      TRANSACTION_TIMEOUT_MS: ${TRANSACTION_TIMEOUT_MS:-60000}
+      JAVA_TOOL_OPTIONS: -Xmx192m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml
 
   lag-monitor:
     <<: *app
@@ -163,7 +242,7 @@ services:
     environment:
       <<: *app-env
       SAMPLE_MS: ${SAMPLE_MS:-1000}
-      JAVA_TOOL_OPTIONS: -Xmx128m
+      JAVA_TOOL_OPTIONS: -Xmx128m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml
 
   consumer-1:
     <<: *app
@@ -174,7 +253,7 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-1
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9101 -Dcom.sun.management.jmxremote.rmi.port=9101 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9101 -Dcom.sun.management.jmxremote.rmi.port=9101 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
 
   consumer-2:
     <<: *app
@@ -185,7 +264,7 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-2
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9102 -Dcom.sun.management.jmxremote.rmi.port=9102 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9102 -Dcom.sun.management.jmxremote.rmi.port=9102 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
 
   consumer-3:
     <<: *app
@@ -196,7 +275,7 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-3
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9103 -Dcom.sun.management.jmxremote.rmi.port=9103 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9103 -Dcom.sun.management.jmxremote.rmi.port=9103 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
 
   consumer-4:
     <<: *app
@@ -207,7 +286,7 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-4
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9104 -Dcom.sun.management.jmxremote.rmi.port=9104 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9104 -Dcom.sun.management.jmxremote.rmi.port=9104 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
 
   consumer-5:
     <<: *app
@@ -218,7 +297,7 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-5
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9105 -Dcom.sun.management.jmxremote.rmi.port=9105 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9105 -Dcom.sun.management.jmxremote.rmi.port=9105 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
 
   consumer-6:
     <<: *app
@@ -229,4 +308,17 @@ services:
     environment:
       <<: *consumer-env
       MEMBER_NAME: consumer-6
-      JAVA_TOOL_OPTIONS: -Xmx192m -Dcom.sun.management.jmxremote.port=9106 -Dcom.sun.management.jmxremote.rmi.port=9106 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+      JAVA_TOOL_OPTIONS: -Xmx160m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml -Dcom.sun.management.jmxremote.port=9106 -Dcom.sun.management.jmxremote.rmi.port=9106 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
+
+# 디스크 풀 훈련을 위해 브로커 데이터 디렉터리를 용량 제한 tmpfs로 둔다. 실제 사용량만큼만 메모리를 쓴다.
+x-broker-disk: &broker-disk
+  driver: local
+  driver_opts:
+    type: tmpfs
+    device: tmpfs
+    o: size=${BROKER_DISK_MB:-256}m,mode=1777
+
+volumes:
+  broker-1-data: *broker-disk
+  broker-2-data: *broker-disk
+  broker-3-data: *broker-disk
