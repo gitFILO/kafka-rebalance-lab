@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" font-family="sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="white"/>
+<text x="70" y="22" font-size="15" font-weight="bold">압축 코덱별 처리량과 압축률</text>
+<line x1="70" y1="300.0" x2="570" y2="300.0" stroke="#e5e7eb"/>
+<text x="64" y="304.0" text-anchor="end">0</text>
+<line x1="70" y1="248.0" x2="570" y2="248.0" stroke="#e5e7eb"/>
+<text x="64" y="252.0" text-anchor="end">100</text>
+<line x1="70" y1="196.0" x2="570" y2="196.0" stroke="#e5e7eb"/>
+<text x="64" y="200.0" text-anchor="end">200</text>
+<line x1="70" y1="144.0" x2="570" y2="144.0" stroke="#e5e7eb"/>
+<text x="64" y="148.0" text-anchor="end">300</text>
+<line x1="70" y1="92.0" x2="570" y2="92.0" stroke="#e5e7eb"/>
+<text x="64" y="96.0" text-anchor="end">400</text>
+<line x1="70" y1="40.0" x2="570" y2="40.0" stroke="#e5e7eb"/>
+<text x="64" y="44.0" text-anchor="end">500</text>
+<text x="16" y="170" transform="rotate(-90 16 170)" text-anchor="middle">MB/s</text>
+<text x="120.0" y="318" text-anchor="middle">none</text>
+<text x="220.0" y="318" text-anchor="middle">gzip</text>
+<text x="320.0" y="318" text-anchor="middle">snappy</text>
+<text x="420.0" y="318" text-anchor="middle">lz4</text>
+<text x="520.0" y="318" text-anchor="middle">zstd</text>
+<text x="320" y="348" text-anchor="middle">compression.type</text>
+<line x1="70" y1="300" x2="570" y2="300" stroke="#111"/>
+<rect x="95.0" y="111.9" width="45.0" height="188.1" fill="#2563eb"/>
+<rect x="195.0" y="275.5" width="45.0" height="24.5" fill="#2563eb"/>
+<rect x="295.0" y="141.1" width="45.0" height="158.9" fill="#2563eb"/>
+<rect x="395.0" y="103.5" width="45.0" height="196.5" fill="#2563eb"/>
+<rect x="495.0" y="236.1" width="45.0" height="63.9" fill="#2563eb"/>
+<text x="80" y="34" fill="#2563eb">MB/s(압축 전)</text>
+<text x="576" y="304.0">0</text>
+<text x="576" y="252.0">0.2</text>
+<text x="576" y="200.0">0.4</text>
+<text x="576" y="148.0">0.6</text>
+<text x="576" y="96.0">0.8</text>
+<text x="576" y="44.0">1</text>
+<text x="626" y="170" transform="rotate(90 626 170)" text-anchor="middle">압축률</text>
+<circle cx="120.0" cy="40.0" r="5" fill="#dc2626"/>
+<circle cx="220.0" cy="179.9" r="5" fill="#dc2626"/>
+<circle cx="320.0" cy="113.6" r="5" fill="#dc2626"/>
+<circle cx="420.0" cy="118.5" r="5" fill="#dc2626"/>
+<circle cx="520.0" cy="182.5" r="5" fill="#dc2626"/>
+<text x="230" y="34" fill="#dc2626">압축률 (오른쪽 축)</text>
+</svg>

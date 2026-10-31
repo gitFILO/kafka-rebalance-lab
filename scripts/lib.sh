@@ -19,8 +19,20 @@ OBSERVE_SEC="${OBSERVE_SEC:-90}"
 ROLL_INTERVAL_SEC="${ROLL_INTERVAL_SEC:-10}"
 TARGET_MEMBER="${TARGET_MEMBER:-consumer-3}"
 
+NODE_VERSIONS_FILE="$RUNS_DIR/.node-versions.env"
+
 compose() {
-  docker compose --progress quiet --profile lab -f "$LAB_ROOT/docker-compose.yml" "$@"
+  # 롤링 업그레이드 중에는 노드마다 이미지 버전이 다르다. 다른 서비스를 다룰 때 노드가 재생성되지 않도록 항상 반영한다.
+  # 서브셸에서 읽어 파일을 지운 뒤에도 버전 변수가 호출한 셸에 남지 않게 한다.
+  (
+    if [ -f "$NODE_VERSIONS_FILE" ]; then
+      set -a
+      # shellcheck disable=SC1090
+      . "$NODE_VERSIONS_FILE"
+      set +a
+    fi
+    docker compose --progress quiet --profile lab -f "$LAB_ROOT/docker-compose.yml" "$@"
+  )
 }
 
 log() {
@@ -36,11 +48,22 @@ now_ms() {
   python3 -c 'import time; print(int(time.time() * 1000))'
 }
 
+cli_container() {
+  local b
+  for b in broker-1 broker-2 broker-3 controller-1 controller-2 controller-3; do
+    if [ "$(docker inspect -f '{{.State.Running}}' "$b" 2>/dev/null)" = "true" ]; then
+      echo "$b"
+      return 0
+    fi
+  done
+  echo broker-1
+}
+
 kafka_bin() {
   local tool="$1"
   shift
   # 브로커의 KAFKA_OPTS(javaagent)를 상속하면 CLI가 9404 포트 충돌로 종료된다.
-  docker exec -e KAFKA_OPTS= broker-1 "/opt/kafka/bin/$tool" "$@"
+  docker exec -e KAFKA_OPTS= "${KAFKA_CLI_CONTAINER:-$(cli_container)}" "/opt/kafka/bin/$tool" "$@"
 }
 
 load_setting() {

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" font-family="sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="white"/>
+<text x="70" y="22" font-size="15" font-weight="bold">처리량-지연 곡선(acks=all, linger 5)</text>
+<line x1="70" y1="300.0" x2="570" y2="300.0" stroke="#e5e7eb"/>
+<text x="64" y="304.0" text-anchor="end">0</text>
+<line x1="70" y1="248.0" x2="570" y2="248.0" stroke="#e5e7eb"/>
+<text x="64" y="252.0" text-anchor="end">50</text>
+<line x1="70" y1="196.0" x2="570" y2="196.0" stroke="#e5e7eb"/>
+<text x="64" y="200.0" text-anchor="end">100</text>
+<line x1="70" y1="144.0" x2="570" y2="144.0" stroke="#e5e7eb"/>
+<text x="64" y="148.0" text-anchor="end">150</text>
+<line x1="70" y1="92.0" x2="570" y2="92.0" stroke="#e5e7eb"/>
+<text x="64" y="96.0" text-anchor="end">200</text>
+<line x1="70" y1="40.0" x2="570" y2="40.0" stroke="#e5e7eb"/>
+<text x="64" y="44.0" text-anchor="end">250</text>
+<text x="16" y="170" transform="rotate(-90 16 170)" text-anchor="middle">지연 ms</text>
+<text x="70.0" y="318" text-anchor="middle">2k</text>
+<text x="147.9" y="318" text-anchor="middle">5k</text>
+<text x="206.7" y="318" text-anchor="middle">10k</text>
+<text x="265.7" y="318" text-anchor="middle">20k</text>
+<text x="324.5" y="318" text-anchor="middle">40k</text>
+<text x="383.5" y="318" text-anchor="middle">80k</text>
+<text x="442.3" y="318" text-anchor="middle">160k</text>
+<text x="501.2" y="318" text-anchor="middle">320k</text>
+<text x="548.6" y="318" text-anchor="middle">559k</text>
+<text x="320" y="348" text-anchor="middle">달성 처리량 (records/s, log)</text>
+<line x1="70" y1="300" x2="570" y2="300" stroke="#111"/>
+<path d="M70.0,295.8 L147.9,295.8 L206.7,295.8 L265.7,295.8 L324.5,296.9 L383.5,299.0 L442.3,299.0 L501.2,299.0 L535.6,297.9 L548.6,284.4 L570.0,166.9" fill="none" stroke="#2563eb" stroke-width="2"/>
+<circle cx="70.0" cy="295.8" r="3" fill="#2563eb"/>
+<circle cx="147.9" cy="295.8" r="3" fill="#2563eb"/>
+<circle cx="206.7" cy="295.8" r="3" fill="#2563eb"/>
+<circle cx="265.7" cy="295.8" r="3" fill="#2563eb"/>
+<circle cx="324.5" cy="296.9" r="3" fill="#2563eb"/>
+<circle cx="383.5" cy="299.0" r="3" fill="#2563eb"/>
+<circle cx="442.3" cy="299.0" r="3" fill="#2563eb"/>
+<circle cx="501.2" cy="299.0" r="3" fill="#2563eb"/>
+<circle cx="535.6" cy="297.9" r="3" fill="#2563eb"/>
+<circle cx="548.6" cy="284.4" r="3" fill="#2563eb"/>
+<circle cx="570.0" cy="166.9" r="3" fill="#2563eb"/>
+<text x="80" y="34" fill="#2563eb">p50</text>
+<path d="M70.0,288.6 L147.9,289.6 L206.7,289.6 L265.7,290.6 L324.5,290.6 L383.5,290.6 L442.3,287.5 L501.2,259.4 L535.6,155.4 L548.6,48.3 L570.0,51.4" fill="none" stroke="#dc2626" stroke-width="2"/>
+<circle cx="70.0" cy="288.6" r="3" fill="#dc2626"/>
+<circle cx="147.9" cy="289.6" r="3" fill="#dc2626"/>
+<circle cx="206.7" cy="289.6" r="3" fill="#dc2626"/>
+<circle cx="265.7" cy="290.6" r="3" fill="#dc2626"/>
+<circle cx="324.5" cy="290.6" r="3" fill="#dc2626"/>
+<circle cx="383.5" cy="290.6" r="3" fill="#dc2626"/>
+<circle cx="442.3" cy="287.5" r="3" fill="#dc2626"/>
+<circle cx="501.2" cy="259.4" r="3" fill="#dc2626"/>
+<circle cx="535.6" cy="155.4" r="3" fill="#dc2626"/>
+<circle cx="548.6" cy="48.3" r="3" fill="#dc2626"/>
+<circle cx="570.0" cy="51.4" r="3" fill="#dc2626"/>
+<text x="230" y="34" fill="#dc2626">p99 (전체 구간)</text>
+<path d="M442.0,293.8 L500.7,296.4 L534.5,293.8 L547.0,274.5 L557.9,199.6" fill="none" stroke="#16a34a" stroke-width="2"/>
+<circle cx="442.0" cy="293.8" r="3" fill="#16a34a"/>
+<circle cx="500.7" cy="296.4" r="3" fill="#16a34a"/>
+<circle cx="534.5" cy="293.8" r="3" fill="#16a34a"/>
+<circle cx="547.0" cy="274.5" r="3" fill="#16a34a"/>
+<circle cx="557.9" cy="199.6" r="3" fill="#16a34a"/>
+<text x="380" y="34" fill="#16a34a">p99 (앞 절반 제외)</text>
+</svg>

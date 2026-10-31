@@ -37,7 +37,7 @@ MAX_POLL_RECORDS=10 docker compose --profile lab up -d --no-deps consumer-1 cons
 확인할 것:
 
 - 폭풍이 멈춘 뒤에도 lag이 줄지 않는다. 이유는 무엇이고 다음 조치는 무엇인가.
-- 같은 상황에서 classic 프로토콜이었다면 그룹 전체에 어떤 영향이 있었는가(Stage 1 stall 결과 참고).
+- 같은 상황에서 classic 프로토콜이었다면 그룹 전체에 어떤 영향이 있었는가(Stage 2 stall 결과 참고).
 - `max.poll.interval.ms`를 늘리는 조치와 `max.poll.records`를 줄이는 조치의 차이는 무엇인가.
 
 ---

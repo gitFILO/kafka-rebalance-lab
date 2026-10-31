@@ -4,7 +4,7 @@
   analyze.py run <run_dir>        한 run을 분석해 summary.json, summary.md를 쓴다
   analyze.py table [--runs DIR]   run별 summary.json을 모아 5x4 결과표(markdown)를 출력한다
 
-지표 정의는 docs/stage1-rebalance/01-measurement.md 참고.
+지표 정의는 docs/stage2-rebalance/01-measurement.md 참고.
 """
 import argparse
 import csv

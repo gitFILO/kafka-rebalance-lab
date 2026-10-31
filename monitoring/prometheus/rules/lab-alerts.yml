@@ -1,0 +1,214 @@
+# 증상 기준 알람 규칙. 원인이 아니라 사용자가 겪는 증상과 그 직전 신호에 건다.
+# 지속 시간(for)과 임계값은 실습 규모에 맞춰 줄였다. 실무 환산은 docs/03-alerting.md "축척"을 따른다.
+# runbook 앵커는 docs/03-alerting.md의 알람별 절과 같다.
+groups:
+  - name: availability
+    rules:
+      - alert: BrokerDown
+        expr: (count(up{job="broker"} == 1) or vector(0)) < 3
+        for: 30s
+        labels: { severity: page, area: cluster }
+        annotations:
+          summary: "응답하는 브로커가 {{ $value }}대다(정상 3대)"
+          runbook: docs/03-alerting.md#brokerdown
+
+      - alert: ControllerQuorumDegraded
+        expr: (count(up{job="controller"} == 1) or vector(0)) < 3
+        for: 30s
+        labels: { severity: ticket, area: cluster }
+        annotations:
+          summary: "응답하는 컨트롤러가 {{ $value }}대다(쿼럼 3대 중 과반 2대 필요)"
+          runbook: docs/03-alerting.md#controllerquorumdegraded
+
+      - alert: NoActiveController
+        expr: (sum(kafka_controller_kafkacontroller_activecontrollercount{job="controller"}) or vector(0)) < 1
+        for: 15s
+        labels: { severity: page, area: cluster }
+        annotations:
+          summary: "활성 컨트롤러가 없다. 메타데이터 변경(ISR, 리더 선출, 토픽 생성)이 멈춘다"
+          runbook: docs/03-alerting.md#noactivecontroller
+
+      - alert: OfflinePartitions
+        expr: max(kafka_controller_kafkacontroller_offlinepartitionscount{job="controller"}) > 0
+        for: 10s
+        labels: { severity: page, area: cluster }
+        annotations:
+          summary: "리더가 없는 파티션 {{ $value }}개. 해당 파티션은 읽기·쓰기가 모두 불가능하다"
+          runbook: docs/03-alerting.md#offlinepartitions
+
+      - alert: UnderMinIsrPartitions
+        expr: sum(kafka_server_replicamanager_underminisrpartitioncount) > 0
+        for: 15s
+        labels: { severity: page, area: cluster }
+        annotations:
+          summary: "ISR이 min.insync.replicas보다 작은 파티션 {{ $value }}개. acks=all 쓰기가 실패한다"
+          runbook: docs/03-alerting.md#underminisrpartitions
+
+      - alert: UnderReplicatedPartitions
+        expr: sum(kafka_server_replicamanager_underreplicatedpartitions) > 0
+        for: 2m
+        labels: { severity: ticket, area: cluster }
+        annotations:
+          summary: "복제가 따라오지 못한 파티션 {{ $value }}개가 2분 넘게 남아 있다"
+          runbook: docs/03-alerting.md#underreplicatedpartitions
+
+      - alert: UncleanLeaderElection
+        expr: sum(increase(kafka_controller_controllerstats_uncleanleaderelections_total[10m])) > 0
+        labels: { severity: page, area: cluster }
+        annotations:
+          summary: "최근 10분 안에 unclean leader election이 있었다. 확인된 쓰기가 사라졌을 수 있다"
+          runbook: docs/03-alerting.md#uncleanleaderelection
+
+  - name: latency
+    rules:
+      - alert: ProduceLatencyHigh
+        expr: max(kafka_network_requestmetrics_totaltimems{request="Produce",quantile="0.99",job="broker"}) > 300
+        for: 1m
+        labels: { severity: ticket, area: broker }
+        annotations:
+          summary: "브로커 Produce p99가 {{ $value }}ms다(평상시 수십 ms)"
+          runbook: docs/03-alerting.md#producelatencyhigh
+
+      - alert: RequestHandlerSaturated
+        expr: min(kafka_server_kafkarequesthandlerpool_requesthandleravgidlepercent) < 0.3
+        for: 2m
+        labels: { severity: ticket, area: broker }
+        annotations:
+          summary: "요청 처리 스레드 유휴율이 {{ $value | humanizePercentage }}까지 떨어졌다"
+          runbook: docs/03-alerting.md#requesthandlersaturated
+
+  - name: storage
+    rules:
+      - alert: BrokerDiskSpaceLow
+        expr: min by (broker) (lab_disk_usablebytes / lab_disk_totalbytes) < 0.25
+        for: 30s
+        labels: { severity: ticket, area: storage }
+        annotations:
+          summary: "{{ $labels.broker }} 로그 디렉터리 여유 공간 {{ $value | humanizePercentage }}"
+          runbook: docs/03-alerting.md#brokerdiskspacelow
+
+      - alert: BrokerDiskSpaceCritical
+        expr: min by (broker) (lab_disk_usablebytes / lab_disk_totalbytes) < 0.10
+        for: 10s
+        labels: { severity: page, area: storage }
+        annotations:
+          summary: "{{ $labels.broker }} 로그 디렉터리 여유 공간 {{ $value | humanizePercentage }}. 다 차면 브로커가 멈춘다"
+          runbook: docs/03-alerting.md#brokerdiskspacelow
+
+      - alert: OfflineLogDirectory
+        expr: sum(kafka_log_logmanager_offlinelogdirectorycount) > 0
+        labels: { severity: page, area: storage }
+        annotations:
+          summary: "오프라인 로그 디렉터리가 있다"
+          runbook: docs/03-alerting.md#offlinelogdirectory
+
+      - alert: LogCleanerThreadDead
+        expr: max(kafka_log_logcleaner_deadthreadcount) > 0
+        labels: { severity: page, area: storage }
+        annotations:
+          summary: "로그 클리너 스레드가 죽었다. compact 토픽이 더 이상 정리되지 않는다"
+          runbook: docs/03-alerting.md#compactedtopicgrowing
+
+      # lab-state는 키 1,000개짜리 상태 토픽이다. 정상이면 브로커당 수 MB에서 더 자라지 않는다.
+      - alert: CompactedTopicGrowing
+        expr: max by (topic) (sum by (instance, topic) (kafka_log_log_size{topic="lab-state"})) > 30e6
+        for: 1m
+        labels: { severity: ticket, area: storage }
+        annotations:
+          summary: "compact 토픽 {{ $labels.topic }}이 브로커당 {{ $value | humanize1024 }}B까지 자랐다"
+          runbook: docs/03-alerting.md#compactedtopicgrowing
+
+  - name: clients
+    rules:
+      - alert: ProducerThroughputDrop
+        expr: sum(rate(lab_producer_ackedtotal[1m])) < 0.8 * sum(lab_producer_targetrate)
+        for: 1m
+        labels: { severity: page, area: client }
+        annotations:
+          summary: "프로듀서 확인 처리량이 목표의 {{ $value | humanize }}건/s로 떨어졌다"
+          runbook: docs/03-alerting.md#producerthroughputdrop
+
+      - alert: ProducerSendErrors
+        expr: sum by (error) (increase(lab_producer_error_count[2m])) > 0
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "프로듀서 전송 실패 {{ $labels.error }} {{ $value | humanize }}건(2분)"
+          runbook: docs/03-alerting.md#producersenderrors
+
+      - alert: ProducerBufferExhausted
+        expr: max(kafka_producer_producer_metrics_bufferpool_wait_ratio) > 0.05 or sum(rate(lab_producer_sendblockedmstotal[1m])) / 1000 > 0.05
+        for: 30s
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "프로듀서 send()가 버퍼 공간을 기다리며 막힌다"
+          runbook: docs/03-alerting.md#producerbufferexhausted
+
+      - alert: ConsumerLagGrowing
+        expr: lab_group_totallag > 10000 and deriv(lab_group_totallag[2m]) > 0
+        for: 1m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "컨슈머 그룹 lag {{ $value }}건이 계속 늘고 있다"
+          runbook: docs/03-alerting.md#consumerlaggrowing
+
+      - alert: ConsumerLagCritical
+        expr: lab_group_totallag > 100000
+        for: 1m
+        labels: { severity: page, area: client }
+        annotations:
+          summary: "컨슈머 그룹 lag {{ $value }}건"
+          runbook: docs/03-alerting.md#consumerlaggrowing
+
+      - alert: PartitionConsumptionStuck
+        expr: (delta(lab_partition_committedoffset[2m]) == 0) and on (partition) (delta(lab_partition_logendoffset[2m]) > 0)
+        for: 1m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "파티션 {{ $labels.partition }}의 커밋 오프셋이 3분째 그대로다(새 레코드는 계속 들어온다)"
+          runbook: docs/03-alerting.md#partitionconsumptionstuck
+
+      - alert: PartitionLagSkew
+        expr: max(lab_partition_lag) > 2000 and max(lab_partition_lag) / (avg(lab_partition_lag) + 1) > 5
+        for: 2m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "특정 파티션 lag이 평균의 {{ $value | humanize }}배다"
+          runbook: docs/03-alerting.md#partitionlagskew
+
+      - alert: ConsumerPollIntervalNearLimit
+        expr: max(kafka_consumer_consumer_metrics_time_between_poll_max) > 24000
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "poll 간격이 {{ $value }}ms다(max.poll.interval.ms 30000의 80% 초과)"
+          runbook: docs/03-alerting.md#consumerpollintervalnearlimit
+
+      - alert: ConsumerGroupUnstable
+        expr: max(lab_group_state_active{state!="Stable"}) == 1
+        for: 1m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "컨슈머 그룹이 1분 넘게 Stable이 아니다"
+          runbook: docs/03-alerting.md#consumergroupunstable
+
+      - alert: ConsumerSkippedRecords
+        expr: sum(increase(lab_consumer_skippedoffsetstotal[5m])) > 0
+        labels: { severity: page, area: client }
+        annotations:
+          summary: "컨슈머가 처리하지 않고 건너뛴 오프셋 {{ $value | humanize }}건(5분)"
+          runbook: docs/03-alerting.md#consumerskippedrecords
+
+      - alert: ClientThrottled
+        expr: max(kafka_consumer_consumer_fetch_manager_metrics_fetch_throttle_time_avg) > 0 or max(kafka_producer_producer_metrics_produce_throttle_time_avg) > 0
+        for: 1m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "브로커가 클라이언트 응답을 지연시키고 있다(throttle {{ $value }}ms)"
+          runbook: docs/03-alerting.md#clientthrottled
+
+      - alert: OpenTransactionStuck
+        expr: max(lab_partition_logendoffset - lab_partition_laststableoffset) > 3000
+        for: 1m
+        labels: { severity: ticket, area: client }
+        annotations:
+          summary: "LSO가 log end offset보다 {{ $value }}건 뒤에 묶여 있다"
+          runbook: docs/03-alerting.md#opentransactionstuck

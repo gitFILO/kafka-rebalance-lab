@@ -43,6 +43,20 @@
      "matchAny": true,
      "limit": 500
     }
+   },
+   {
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "enable": true,
+    "iconColor": "red",
+    "name": "alerts",
+    "expr": "ALERTS{alertstate=\"firing\"}",
+    "step": "15s",
+    "titleFormat": "{{alertname}}",
+    "textFormat": "{{severity}}",
+    "useValueForTime": false
    }
   ]
  },
@@ -66,12 +80,207 @@
  "panels": [
   {
    "type": "row",
-   "title": "클러스터 상태",
+   "title": "알람",
    "id": 2,
    "collapsed": false,
    "gridPos": {
     "x": 0,
     "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Firing (page)",
+   "description": "즉시 대응. docs/03-alerting.md 런북",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "count(ALERTS{alertstate=\"firing\",severity=\"page\"}) or vector(0)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 3,
+    "h": 5
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Firing (ticket)",
+   "description": "업무 시간 대응",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "count(ALERTS{alertstate=\"firing\",severity=\"ticket\"}) or vector(0)",
+     "legendFormat": "",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 3,
+    "y": 1,
+    "w": 3,
+    "h": 5
+   }
+  },
+  {
+   "type": "table",
+   "title": "Firing alerts",
+   "description": "Prometheus가 평가한 알람. 억제(inhibit) 여부는 Alertmanager(9093)에서 본다",
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "ALERTS{alertstate=\"firing\"}",
+     "refId": "A",
+     "instant": true,
+     "format": "table"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "Value": true,
+       "__name__": true,
+       "alertstate": true,
+       "job": true,
+       "instance": true
+      },
+      "indexByName": {
+       "severity": 0,
+       "alertname": 1,
+       "area": 2
+      }
+     }
+    }
+   ],
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 6,
+    "y": 1,
+    "w": 18,
+    "h": 5
+   }
+  },
+  {
+   "type": "row",
+   "title": "클러스터 상태",
+   "id": 6,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 6,
     "w": 24,
     "h": 1
    },
@@ -136,14 +345,14 @@
      "interval": "5s"
     }
    ],
-   "id": 3,
+   "id": 7,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -203,14 +412,14 @@
      "interval": "5s"
     }
    ],
-   "id": 4,
+   "id": 8,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 3,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -266,14 +475,14 @@
      "interval": "5s"
     }
    ],
-   "id": 5,
+   "id": 9,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 6,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -329,14 +538,14 @@
      "interval": "5s"
     }
    ],
-   "id": 6,
+   "id": 10,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 9,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -392,14 +601,14 @@
      "interval": "5s"
     }
    ],
-   "id": 7,
+   "id": 11,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 12,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -455,14 +664,14 @@
      "interval": "5s"
     }
    ],
-   "id": 8,
+   "id": 12,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 15,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -518,14 +727,14 @@
      "interval": "5s"
     }
    ],
-   "id": 9,
+   "id": 13,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 18,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -589,14 +798,14 @@
      "interval": "5s"
     }
    ],
-   "id": 10,
+   "id": 14,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 21,
-    "y": 1,
+    "y": 7,
     "w": 3,
     "h": 4
    }
@@ -604,11 +813,11 @@
   {
    "type": "row",
    "title": "흐름: 생산 → 브로커 → 소비",
-   "id": 11,
+   "id": 15,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 5,
+    "y": 11,
     "w": 24,
     "h": 1
    },
@@ -687,14 +896,14 @@
      "interval": "5s"
     }
    ],
-   "id": 12,
+   "id": 16,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 6,
+    "y": 12,
     "w": 8,
     "h": 7
    }
@@ -742,14 +951,14 @@
      "interval": "5s"
     }
    ],
-   "id": 13,
+   "id": 17,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 6,
+    "y": 12,
     "w": 8,
     "h": 7
    }
@@ -797,14 +1006,14 @@
      "interval": "5s"
     }
    ],
-   "id": 14,
+   "id": 18,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 6,
+    "y": 12,
     "w": 8,
     "h": 7
    }
@@ -812,11 +1021,11 @@
   {
    "type": "row",
    "title": "컨슈머 그룹",
-   "id": 15,
+   "id": 19,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 13,
+    "y": 19,
     "w": 24,
     "h": 1
    },
@@ -851,14 +1060,14 @@
      "interval": "5s"
     }
    ],
-   "id": 16,
+   "id": 20,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 14,
+    "y": 20,
     "w": 24,
     "h": 4
    }
@@ -916,14 +1125,14 @@
      "interval": "5s"
     }
    ],
-   "id": 17,
+   "id": 21,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 18,
+    "y": 24,
     "w": 8,
     "h": 7
    }
@@ -971,14 +1180,14 @@
      "interval": "5s"
     }
    ],
-   "id": 18,
+   "id": 22,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 18,
+    "y": 24,
     "w": 8,
     "h": 7
    }
@@ -1046,14 +1255,14 @@
      "interval": "5s"
     }
    ],
-   "id": 19,
+   "id": 23,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 18,
+    "y": 24,
     "w": 8,
     "h": 7
    }
@@ -1101,14 +1310,14 @@
      "interval": "5s"
     }
    ],
-   "id": 20,
+   "id": 24,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 25,
+    "y": 31,
     "w": 8,
     "h": 7
    }
@@ -1166,14 +1375,14 @@
      "interval": "5s"
     }
    ],
-   "id": 21,
+   "id": 25,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 25,
+    "y": 31,
     "w": 8,
     "h": 7
    }
@@ -1241,14 +1450,14 @@
      "interval": "5s"
     }
    ],
-   "id": 22,
+   "id": 26,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 25,
+    "y": 31,
     "w": 8,
     "h": 7
    }
@@ -1256,11 +1465,11 @@
   {
    "type": "row",
    "title": "지연",
-   "id": 23,
+   "id": 27,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 32,
+    "y": 38,
     "w": 24,
     "h": 1
    },
@@ -1309,14 +1518,14 @@
      "interval": "5s"
     }
    ],
-   "id": 24,
+   "id": 28,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 33,
+    "y": 39,
     "w": 8,
     "h": 7
    }
@@ -1364,14 +1573,14 @@
      "interval": "5s"
     }
    ],
-   "id": 25,
+   "id": 29,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 33,
+    "y": 39,
     "w": 8,
     "h": 7
    }
@@ -1439,14 +1648,14 @@
      "interval": "5s"
     }
    ],
-   "id": 26,
+   "id": 30,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 33,
+    "y": 39,
     "w": 8,
     "h": 7
    }

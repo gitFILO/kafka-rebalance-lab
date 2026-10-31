@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 2 단일 장애 훈련.
+# Stage 4 단일 장애 훈련.
 #   drill.sh list
 #   drill.sh start <Dxx>     워크로드 기동 → 워밍업 → 장애 주입. 이후 대시보드로 진단하고 직접 조치한다.
 #   drill.sh verify          현재 훈련의 복구 기준을 판정한다.
@@ -66,6 +66,10 @@ reset_offsets() {
   kafka_bin kafka-consumer-groups.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --group "$GROUP_ID" --reset-offsets "$@" --execute
 }
 
+alert_firing() {
+  $PROMQ wait "count(ALERTS{alertname=\"$1\",alertstate=\"firing\"})" '>=' 1 --timeout "${2:-180}"
+}
+
 preferred_election() {
   kafka_bin kafka-leader-election.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --election-type PREFERRED \
     --all-topic-partitions >/dev/null 2>&1 || true
@@ -130,7 +134,7 @@ cmd_start() {
   sleep "$DRILL_WARMUP_SEC"
   mark "INJECT $DRILL_ID"
   drill_inject
-  log "장애를 주입했다. Grafana(http://localhost:3000)에서 증상을 확인하고 docs/stage2-drills/$(basename "$DRILL_FILE" .sh).md 의 진행 방식을 따른다."
+  log "장애를 주입했다. Grafana(http://localhost:3000)에서 증상을 확인하고 docs/stage4-drills/$(basename "$DRILL_FILE" .sh).md 의 진행 방식을 따른다."
 }
 
 cmd_stop() {

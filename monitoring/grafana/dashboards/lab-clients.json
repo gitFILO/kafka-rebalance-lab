@@ -43,6 +43,20 @@
      "matchAny": true,
      "limit": 500
     }
+   },
+   {
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "enable": true,
+    "iconColor": "red",
+    "name": "alerts",
+    "expr": "ALERTS{alertstate=\"firing\"}",
+    "step": "15s",
+    "titleFormat": "{{alertname}}",
+    "textFormat": "{{severity}}",
+    "useValueForTime": false
    }
   ]
  },

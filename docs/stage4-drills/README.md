@@ -1,10 +1,10 @@
-# Stage 2. 단일 장애 훈련
+# Stage 4. 단일 장애 훈련
 
-실무에서 자주 나는 장애 11개를 하나씩 주입하고, 대시보드에서 증상을 확인한 뒤 원인을 좁히고 조치한다. 장애가 무엇인지 알고 시작하는 훈련이다.
+실무에서 자주 나는 장애 17개를 하나씩 주입하고, 알람으로 감지한 뒤 대시보드와 CLI로 원인을 좁히고 조치한다. 장애가 무엇인지 알고 시작하는 훈련이다.
 
 ## 목적
 
-- 장애마다 메트릭과 로그에 남는 흔적을 직접 확인하고 목록으로 만든다. Stage 3 블라인드 훈련은 이 목록이 없으면 진단이 아니라 추측이 된다.
+- 장애마다 메트릭과 로그에 남는 흔적을 직접 확인하고 목록으로 만든다. Stage 5 블라인드 훈련은 이 목록이 없으면 진단이 아니라 추측이 된다.
 - 증상 → 가설 → 근거로 소거 → 조치 → 검증의 순서를 몸에 익힌다. 코드는 문서와 관찰이 어긋날 때 판정하는 용도로 쓴다.
 - 조치마다 부작용을 말할 수 있게 한다. 같은 증상에 쓸 수 있는 조치가 여러 개일 때 무엇을 먼저 하고 무엇을 하지 말아야 하는지가 상급과 중급을 가른다.
 - 장애마다 알람 조건과 런북 항목을 남긴다. 커리큘럼 Phase 6(관측)과 Phase 7(포스트모템)의 재료가 된다.
@@ -17,15 +17,30 @@
 | [D02](D02-rebalance-storm.md) | poll 간격 초과로 인한 리밸런스 폭풍 | 컨슈머 | 처리량 0, 그룹 상태 반복 전이 | 20분 |
 | [D03](D03-poison-pill.md) | poison pill 무한 재시도 | 컨슈머 | 파티션 1개 lag만 증가 | 20분 |
 | [D04](D04-hot-partition.md) | 키 쏠림으로 인한 hot partition | 컨슈머·설계 | 파티션 1개 lag 증가, 증설 무효 | 20분 |
+| [D16](D16-client-quota.md) | 기본 클라이언트 쿼터로 인한 소비 지연 | 클라이언트 정책 | lag 증가, 오류 없음 | 15분 |
 | [D05](D05-broker-failure.md) | 브로커 1대 비정상 종료 | 브로커 | URP, 리더 이동 | 15분 |
 | [D06](D06-slow-broker.md) | 느린 브로커(주기적 정지) | 브로커 | 프로듀서 지연 증가 | 20분 |
-| [D07](D07-disk-full.md) | 브로커 디스크 풀 | 브로커 | 디스크 여유 0, 브로커 종료 | 20분 |
+| [D12](D12-replication-throttle.md) | 재배치 후 남은 복제 throttle | 복제 | 브로커는 모두 정상인데 URP가 남음 | 20분 |
 | [D08](D08-min-isr.md) | `min.insync.replicas` 미달로 쓰기 거부 | 복제 | 생산 중단, 커밋 실패 | 15분 |
-| [D09](D09-offset-expiry.md) | 오프셋 만료 후 latest 리셋으로 인한 조용한 유실 | 오프셋 | 증상 없음(다운스트림 신고) | 25분 |
+| [D17](D17-unclean-election.md) | 랙 장애 후 unclean leader election 판단 | 복제 | 전 파티션 offline | 25분 |
+| [D07](D07-disk-full.md) | 브로커 디스크 풀 | 저장 | 디스크 여유 0, 브로커 종료 | 20분 |
+| [D15](D15-compaction-stalled.md) | compact 토픽이 정리되지 않고 계속 자람 | 저장 | 토픽 크기 선형 증가 | 20분 |
 | [D10](D10-record-too-large.md) | 큰 메시지로 인한 `RecordTooLargeException` | 프로듀서·토픽 | 프로듀서 오류 | 15분 |
+| [D14](D14-controller-quorum-loss.md) | 컨트롤러 쿼럼 상실 | 컨트롤 플레인 | 처음엔 증상 없음, 브로커 장애가 겹치면 전체 정지 | 20분 |
+| [D13](D13-rolling-upgrade.md) | 롤링 업그레이드 finalize 후 롤백 실패 | 운영 작업 | 롤백한 브로커가 시작 후 종료 | 30분 |
+| [D09](D09-offset-expiry.md) | 오프셋 만료 후 latest 리셋으로 인한 조용한 유실 | 오프셋 | 증상 없음(다운스트림 신고) | 25분 |
 | [D11](D11-hanging-transaction.md) | 열린 트랜잭션이 LSO를 막음 | 트랜잭션 | `read_committed` lag 증가 | 25분 |
 
-권장 순서는 표의 순서다. D01~D04는 컨슈머 쪽, D05~D08은 브로커·복제 쪽, D09~D11은 증상과 원인이 멀리 떨어진 유형이다.
+권장 순서는 표의 순서다. ID는 추가된 순서라 표 순서와 다르다. 묶음별로 앞 훈련이 뒤 훈련의 비교 기준이 된다.
+
+| 묶음 | 훈련 | 앞 훈련과의 관계 |
+|---|---|---|
+| 컨슈머 | D01 → D02 → D03 → D04 → D16 | D16은 D01과 증상(lag 증가)이 같고 poll idle ratio의 방향이 반대다 |
+| 브로커와 복제 | D05 → D06 → D12 → D08 → D17 | D12는 D05의 "브로커 복구 후 URP 해소"가 안 되는 경우다. D17은 D08에서 한 대가 더 사라진 경우다 |
+| 저장 | D07 → D15 | 둘 다 디스크가 차지만 D15는 클리너가 정상인데 정리할 것이 없다 |
+| 프로듀서·토픽 | D10 | |
+| 컨트롤 플레인과 운영 작업 | D14 → D13 | D14에서 쿼럼의 역할을 본 뒤 D13에서 feature 버전을 다룬다. D13은 클러스터를 새로 만든다 |
+| 증상과 원인이 먼 유형 | D09 → D11 | 알람이 늦거나 울리지 않는다 |
 
 ### 공통 워크로드
 
@@ -47,11 +62,15 @@
 |---|---|---|---|
 | `max.poll.interval.ms` | 300000 | 30000 | D02 |
 | `offsets.retention.minutes` | 10080(7일) | 1 (D09에서만) | D09 |
-| `log.retention.ms` | 604800000(7일) | 3600000(1시간). Stage 3은 토픽 설정으로 10분 | 전체(디스크 보호) |
+| `log.retention.ms` | 604800000(7일) | 3600000(1시간). Stage 5은 토픽 설정으로 10분 | 전체(디스크 보호) |
 | `log.roll.ms` | 604800000(7일) | 60000(1분) | 전체(디스크 보호) |
-| `log.retention.check.interval.ms` | 300000 | 30000 | Stage 3 |
+| `log.retention.check.interval.ms` | 300000 | 30000 | Stage 5 |
 | 브로커 디스크 | 수 TB | 256MB tmpfs | D07 |
+| `log.retention.bytes`(파티션당) | -1(무제한) | 8388608(8MB) | 전체(디스크 보호) |
 | `transaction.timeout.ms` | 60000 | 900000 (D11에서만) | D11 |
+| 복제 throttle | 수십~수백 MB/s | 10KB/s (D12에서만) | D12 |
+| 클라이언트 쿼터 | 수 MB/s | 2KB/s (D16에서만) | D16 |
+| compact 토픽 크기 알람 | 키 수 × 값 크기의 수 배 | 브로커당 30MB | D15 |
 
 ### 장애 주입 방식
 
@@ -62,6 +81,11 @@
 | 프로세스 장애 | `docker kill -s KILL`, `docker stop`(controlled shutdown) | `fault_broker_kill`, `fault_broker_stop` |
 | 앱 동작 | `control/` 파일([01-environment.md](../01-environment.md#런타임-제어)) | `ctl_set` |
 | 브로커 설정 | 환경 변수를 바꿔 브로커 재생성 | D09 |
+| 복제 throttle | 브로커 동적 설정(`*.replication.throttled.rate`)과 토픽 설정(`*.replication.throttled.replicas`) | `fault_throttle_set`, `fault_throttle_clear` |
+| 클라이언트 쿼터 | `kafka-configs.sh --entity-type clients` | `client_quota_config`, `fault_quota_clear` |
+| 컨트롤러 장애 | 컨트롤러 컨테이너 SIGKILL | D14 |
+| 버전 교체 | 노드별 이미지 버전을 바꿔 재생성(`scripts/upgrade.sh`, 버전은 `results/runs/.node-versions.env`에 기록) | D13 |
+| 토픽 설정 | `kafka-configs.sh --entity-type topics` | D15(`lab-state` 토픽과 `state-producer`를 이 훈련에서만 띄운다) |
 
 함수는 `scripts/lib-fault.sh`에 있다. 훈련 정의는 `scripts/drills/Dxx-*.sh`에 있고, 주입·신호 판정·모범 조치·복구 판정이 함수 하나씩으로 나뉘어 있다.
 
@@ -80,7 +104,7 @@
 훈련 문서는 위쪽(목적, 개요, 진행 방식)과 아래쪽(해설)으로 나뉜다. 처음에는 위쪽만 읽고 시작한다. 직접 원인을 찾고 조치한 다음 해설을 읽고 비교한다.
 
 1. **시작:** `drill.sh start Dxx`. 주입 시점은 Grafana에 `INJECT Dxx` 어노테이션으로 표시된다.
-2. **감지:** Overview에서 이상이 보이는 패널을 찾는다. 무엇이 보였는지, 언제부터인지 적는다.
+2. **감지:** 알람에서 시작한다(`./scripts/alerts.sh`, http://localhost:9093). 어떤 알람이 언제 울렸는지 적고 [03-alerting.md](../03-alerting.md)의 해당 런북을 연다. 알람이 없으면 Overview에서 이상이 보이는 패널을 찾는다. 알람 없이 찾은 장애는 런북에 "알람 누락"으로 기록한다.
 3. **범위 축소:** 영향이 전체인가 일부인가(파티션, 멤버, 브로커). 생산·저장·소비 중 어느 구간인가. Cluster, Clients 대시보드로 내려간다.
 4. **근거 확보:** CLI(`kafka-consumer-groups.sh`, `kafka-topics.sh`, `kafka-transactions.sh` 등), 컨테이너 로그, run 디렉터리의 이벤트 CSV로 가설을 확인하거나 버린다.
 5. **조치:** 문서의 "조치 선택지"를 보기 전에 스스로 조치를 정하고 실행한다. 막히면 `drill.sh fix`로 모범 조치를 적용하고 그 내용을 해설과 대조한다.
@@ -94,6 +118,7 @@
 
 ## 완료 기준
 
-- [ ] 11개 훈련을 모두 직접 진단·조치했다(모범 조치에 의존하지 않은 횟수를 기록)
+- [ ] 17개 훈련을 모두 직접 진단·조치했다(모범 조치에 의존하지 않은 횟수를 기록)
 - [ ] 훈련마다 런북(증상, 진단 경로, 조치, 부작용, 알람 조건)을 작성했다 → `results/drills/`
-- [ ] 장애별 흔적 목록(어느 패널, 어떤 모양)을 한 장으로 정리했다 → Stage 3 진단 기준
+- [ ] 훈련마다 처음 울린 알람과 주입부터 걸린 시간을 기록하고, 알람이 놓친 훈련을 따로 모았다
+- [ ] 장애별 흔적 목록(어느 패널, 어떤 모양)을 한 장으로 정리했다 → Stage 5 진단 기준

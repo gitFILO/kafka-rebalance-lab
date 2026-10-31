@@ -12,8 +12,10 @@ public final class LabApp {
             case "consumer" -> new LabConsumer().run();
             case "lag-monitor" -> new LagMonitor().run();
             case "disk-monitor" -> new DiskMonitor().run();
+            case "bench-consumer" -> new BenchConsumer().run();
+            case "state-producer" -> new StateProducer().run();
             default -> {
-                System.err.println("usage: LabApp <producer|consumer|lag-monitor|disk-monitor>");
+                System.err.println("usage: LabApp <producer|consumer|lag-monitor|disk-monitor|bench-consumer|state-producer>");
                 System.exit(2);
             }
         }

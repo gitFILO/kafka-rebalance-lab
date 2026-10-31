@@ -37,10 +37,11 @@ x-broker-env: &broker-env
   KAFKA_GROUP_CONSUMER_HEARTBEAT_INTERVAL_MS: 5000
   KAFKA_GROUP_CONSUMER_ASSIGNORS: uniform,range
   KAFKA_GROUP_CONSUMER_MIGRATION_POLICY: ${MIGRATION_POLICY:-bidirectional}
-  # 장애 훈련용. 처리량에 맞춰 축소한 값이다(docs/stage2-drills/README.md "축척").
+  # 장애 훈련용. 처리량에 맞춰 축소한 값이다(docs/stage4-drills/README.md "축척").
   KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 30000
-  # 256MB 디스크에서 몇 시간씩 실험해도 차지 않도록 1시간만 보존한다.
+  # 기본 부하가 브로커당 약 140KB/s라 시간 보존만으로는 1시간 안에 256MB가 찬다. 파티션당 크기 상한을 함께 둔다.
   KAFKA_LOG_RETENTION_MS: ${LOG_RETENTION_MS:-3600000}
+  KAFKA_LOG_RETENTION_BYTES: ${LOG_RETENTION_BYTES:-8388608}
   KAFKA_LOG_ROLL_MS: 60000
   KAFKA_OFFSETS_RETENTION_MINUTES: ${OFFSETS_RETENTION_MINUTES:-10080}
   KAFKA_OFFSETS_RETENTION_CHECK_INTERVAL_MS: ${OFFSETS_RETENTION_CHECK_INTERVAL_MS:-600000}
@@ -48,6 +49,7 @@ x-broker-env: &broker-env
 x-controller: &controller
   image: rebalance-lab-kafka:${KAFKA_VERSION:-4.1.2}
   restart: "no"
+  stop_grace_period: 30s
   volumes:
     - ./monitoring/jmx:/opt/jmx-config:ro
   healthcheck:
@@ -59,6 +61,8 @@ x-controller: &controller
 x-broker: &broker
   image: rebalance-lab-kafka:${KAFKA_VERSION:-4.1.2}
   restart: "no"
+  # 재생성할 때 controlled shutdown이 끝나기 전에 SIGKILL되지 않도록 넉넉히 준다.
+  stop_grace_period: 30s
   volumes:
     - ./monitoring/jmx:/opt/jmx-config:ro
   depends_on:
@@ -109,30 +113,43 @@ x-consumer-env: &consumer-env
 services:
   controller-1:
     <<: *controller
+    image: rebalance-lab-kafka:${CONTROLLER_1_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: controller-1
     container_name: controller-1
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - controller-1-data:/tmp/kraft-logs
     environment:
       <<: *controller-env
       KAFKA_NODE_ID: 1
 
   controller-2:
     <<: *controller
+    image: rebalance-lab-kafka:${CONTROLLER_2_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: controller-2
     container_name: controller-2
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - controller-2-data:/tmp/kraft-logs
     environment:
       <<: *controller-env
       KAFKA_NODE_ID: 2
 
   controller-3:
     <<: *controller
+    image: rebalance-lab-kafka:${CONTROLLER_3_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: controller-3
     container_name: controller-3
+    volumes:
+      - ./monitoring/jmx:/opt/jmx-config:ro
+      - controller-3-data:/tmp/kraft-logs
     environment:
       <<: *controller-env
       KAFKA_NODE_ID: 3
 
   broker-1:
     <<: *broker
+    image: rebalance-lab-kafka:${BROKER_1_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: broker-1
     container_name: broker-1
     volumes:
@@ -147,6 +164,7 @@ services:
 
   broker-2:
     <<: *broker
+    image: rebalance-lab-kafka:${BROKER_2_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: broker-2
     container_name: broker-2
     volumes:
@@ -161,6 +179,7 @@ services:
 
   broker-3:
     <<: *broker
+    image: rebalance-lab-kafka:${BROKER_3_VERSION:-${KAFKA_VERSION:-4.1.2}}
     hostname: broker-3
     container_name: broker-3
     volumes:
@@ -186,6 +205,10 @@ services:
       - broker-1-data:/disks/broker-1:ro
       - broker-2-data:/disks/broker-2:ro
       - broker-3-data:/disks/broker-3:ro
+      # tmpfs 볼륨은 마운트한 컨테이너가 모두 멈추면 내용이 사라진다. 노드를 멈춰도 데이터가 남도록 여기서 계속 붙잡는다.
+      - controller-1-data:/disks/controller-1:ro
+      - controller-2-data:/disks/controller-2:ro
+      - controller-3-data:/disks/controller-3:ro
 
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -199,6 +222,19 @@ services:
     ports: ["9090:9090"]
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    hostname: alertmanager
+    container_name: alertmanager
+    restart: "no"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports: ["9093:9093"]
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
 
   grafana:
     image: grafana/grafana-oss:12.1.1
@@ -233,6 +269,20 @@ services:
       TRANSACTIONAL: ${TRANSACTIONAL:-false}
       TRANSACTION_TIMEOUT_MS: ${TRANSACTION_TIMEOUT_MS:-60000}
       JAVA_TOOL_OPTIONS: -Xmx192m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml
+
+  # D15 컴팩션 훈련에서만 띄운다.
+  state-producer:
+    <<: *app
+    hostname: state-producer
+    container_name: state-producer
+    command: ["state-producer"]
+    environment:
+      BOOTSTRAP_SERVERS: broker-1:9092,broker-2:9092,broker-3:9092
+      STATE_TOPIC: ${STATE_TOPIC:-lab-state}
+      STATE_KEYS: ${STATE_KEYS:-1000}
+      STATE_RATE: ${STATE_RATE:-400}
+      STATE_VALUE_BYTES: ${STATE_VALUE_BYTES:-250}
+      JAVA_TOOL_OPTIONS: -Xmx128m -javaagent:/app/jmx/agent.jar=9404:/app/jmx-config/client.yml
 
   lag-monitor:
     <<: *app
@@ -318,7 +368,17 @@ x-broker-disk: &broker-disk
     device: tmpfs
     o: size=${BROKER_DISK_MB:-256}m,mode=1777
 
+x-controller-disk: &controller-disk
+  driver: local
+  driver_opts:
+    type: tmpfs
+    device: tmpfs
+    o: size=64m,mode=1777
+
 volumes:
+  controller-1-data: *controller-disk
+  controller-2-data: *controller-disk
+  controller-3-data: *controller-disk
   broker-1-data: *broker-disk
   broker-2-data: *broker-disk
   broker-3-data: *broker-disk

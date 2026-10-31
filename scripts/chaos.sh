@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 3 블라인드 장애 훈련.
+# Stage 5 블라인드 장애 훈련.
 #   chaos.sh start [Cx]     카드를 무작위(또는 지정)로 골라 봉인하고, 정해지지 않은 시점에 주입한다.
 #   chaos.sh status         경과 시간만 보여 준다.
 #   chaos.sh report         장애 보고서 템플릿을 만든다(results/chaos/<id>/report.md).
@@ -205,6 +205,20 @@ cmd_reveal() {
   cut -d' ' -f1,2,4- "$SEALED/timeline.log" | sed 's/^/- /'
   echo
   inject_ms="$(awk '$4 == "INJECT_BEGIN" {print $3}' "$SEALED/timeline.log" | head -1)"
+  echo "## 알람 이력 (라운드 시작 이후)"
+  echo
+  "$LAB_ROOT/scripts/alerts.sh" history "$((STARTED_MS / 1000))" | sed 's/^/    /' || echo "    (Prometheus 조회 실패)"
+  echo
+  if [ -n "$inject_ms" ]; then
+    local first
+    first="$("$LAB_ROOT/scripts/alerts.sh" first "$((inject_ms / 1000))" 2>/dev/null || true)"
+    if [ -n "$first" ]; then
+      echo "- 주입 → 첫 알람(${first#* }): $(( ${first%% *} - inject_ms / 1000 ))s"
+    else
+      echo "- 주입 이후 새로 울린 알람이 없다. 알람이 놓친 장애다"
+    fi
+    echo
+  fi
   if [ -f "$CHAOS_DIR/report.md" ] && [ -n "$inject_ms" ]; then
     local detect cause dms cms
     detect="$(sed -n 's/^- 감지 시각: *//p' "$CHAOS_DIR/report.md" | head -1)"
@@ -217,7 +231,7 @@ cmd_reveal() {
     [ -n "$cms" ] && echo "- 주입 → 원인 확정: $(( (cms - inject_ms) / 1000 ))s"
     echo
   fi
-  cat "$LAB_ROOT/docs/stage3-chaos/scoring.md"
+  cat "$LAB_ROOT/docs/stage5-chaos/scoring.md"
 }
 
 cmd_stop() {
