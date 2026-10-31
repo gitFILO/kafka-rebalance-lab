@@ -296,6 +296,7 @@ services:
 
   consumer-1:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_1_TAG:-latest}
     hostname: consumer-1
     container_name: consumer-1
     command: ["consumer"]
@@ -307,6 +308,7 @@ services:
 
   consumer-2:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_2_TAG:-latest}
     hostname: consumer-2
     container_name: consumer-2
     command: ["consumer"]
@@ -318,6 +320,7 @@ services:
 
   consumer-3:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_3_TAG:-latest}
     hostname: consumer-3
     container_name: consumer-3
     command: ["consumer"]
@@ -329,6 +332,7 @@ services:
 
   consumer-4:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_4_TAG:-latest}
     hostname: consumer-4
     container_name: consumer-4
     command: ["consumer"]
@@ -340,6 +344,7 @@ services:
 
   consumer-5:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_5_TAG:-latest}
     hostname: consumer-5
     container_name: consumer-5
     command: ["consumer"]
@@ -351,6 +356,7 @@ services:
 
   consumer-6:
     <<: *app
+    image: rebalance-lab-app:${CONSUMER_6_TAG:-latest}
     hostname: consumer-6
     container_name: consumer-6
     command: ["consumer"]

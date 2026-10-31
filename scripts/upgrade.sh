@@ -3,6 +3,7 @@
 #   upgrade.sh status                    노드별 이미지 버전과 finalized feature
 #   upgrade.sh roll <node> <version>     노드 하나를 해당 버전 이미지로 재생성하고 정상화까지 기다린다
 #   upgrade.sh roll-all <version>        컨트롤러(리더는 마지막) → 브로커 순서로 한 대씩 교체
+#   upgrade.sh rollback-all <version>    브로커(역순) → 컨트롤러(리더는 마지막) 순서로 한 대씩 교체
 #   upgrade.sh finalize <release>        kafka-features upgrade --release-version <release>
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
@@ -93,6 +94,20 @@ cmd_roll_all() {
   done
 }
 
+cmd_rollback_all() {
+  local v="$1" leader c b
+  for b in broker-3 broker-2 broker-1; do
+    cmd_roll "$b" "$v"
+  done
+  # 브로커를 교체하는 동안 리더가 바뀔 수 있으므로 컨트롤러 차례에 조회한다.
+  leader="controller-$(active_controller)"
+  for c in controller-3 controller-2 controller-1; do
+    [ "$c" = "$leader" ] && continue
+    cmd_roll "$c" "$v"
+  done
+  cmd_roll "$leader" "$v"
+}
+
 cmd_status() {
   local n
   for n in $NODES; do
@@ -107,8 +122,9 @@ case "${1:-}" in
   status) cmd_status ;;
   roll) cmd_roll "${2:?node}" "${3:?version}" ;;
   roll-all) cmd_roll_all "${2:?version}" ;;
+  rollback-all) cmd_rollback_all "${2:?version}" ;;
   finalize)
     kafka_bin kafka-features.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" upgrade --release-version "${2:?release, e.g. 4.1}"
     ;;
-  *) echo "usage: $0 <status|roll <node> <version>|roll-all <version>|finalize <release>>"; exit 2 ;;
+  *) echo "usage: $0 <status|roll <node> <version>|roll-all <version>|rollback-all <version>|finalize <release>>"; exit 2 ;;
 esac

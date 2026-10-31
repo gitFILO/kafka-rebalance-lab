@@ -16,6 +16,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.utils.AppInfoParser;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -43,8 +44,11 @@ final class LabConsumer {
     private final Map<Integer, Long> lastOffset = new HashMap<>();
     private final LabMetrics stats = LabMetrics.of("type=consumer");
     private final String poisonPolicy = Env.str("POISON_POLICY", "retry");
+    // 새 버전의 결함을 흉내 내므로 이 파일은 같은 kafka-clients 버전의 멤버에게만 걸린다.
+    private final String regressionFile = "regression." + AppInfoParser.getVersion();
     private volatile boolean running = true;
     private long processMs;
+    private long regressionMs;
     private Control ctl;
 
     private KafkaConsumer<String, String> consumer;
@@ -100,6 +104,7 @@ final class LabConsumer {
                 long now = System.currentTimeMillis();
                 if (now >= nextControl) {
                     processMs = ctl.readLong(member, "process_ms", Env.integer("PROCESS_MS", 2));
+                    regressionMs = ctl.readLong(member, regressionFile, 0);
                     stats.set("ProcessMs", processMs);
                     nextControl = now + 1_000;
                 }
@@ -128,6 +133,10 @@ final class LabConsumer {
     private void process(ConsumerRecords<String, String> records) throws IOException, InterruptedException {
         Set<TopicPartition> blocked = new HashSet<>();
         for (ConsumerRecord<String, String> record : records) {
+            // 배치가 길면 종료 훅의 대기(15초)가 먼저 끝나 close와 flush 없이 내려간다.
+            if (!running) {
+                break;
+            }
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
             if (blocked.contains(tp)) {
                 continue;
@@ -137,8 +146,8 @@ final class LabConsumer {
                     blocked.add(tp);
                     continue;
                 }
-            } else if (processMs > 0) {
-                Thread.sleep(processMs);
+            } else if (processMs + regressionMs > 0) {
+                Thread.sleep(processMs + regressionMs);
             }
             Long last = lastOffset.put(record.partition(), record.offset());
             // 트랜잭션 마커는 오프셋을 1씩 건너뛰므로 큰 점프만 셈한다.

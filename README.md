@@ -9,7 +9,7 @@ Kafka 동작을 문서가 아니라 측정값과 소스 코드로 설명하고, 
 1. 프로듀서 설정(batch, linger, 압축, acks)이 처리량과 지연에 주는 영향을 곡선으로 제시하고, 그 측정값으로 클러스터 용량을 산정한다.
 2. 리밸런싱 설정(eager, cooperative, static membership, consumer 프로토콜)이 장애 상황에서 만드는 차이를 수치로 제시하고, 그 차이를 4.1.2 코드 위치로 설명한다.
 3. 공개된 JIRA 이슈를 재현하고, 측정과 프로파일링으로 원인 코드를 확정한다.
-4. 장애 17종을 알람에서 시작해 진단하고, 부작용을 알고 조치를 고른다.
+4. 장애 19종을 알람에서 시작해 진단하고, 부작용을 알고 조치를 고른다.
 5. 원인을 모르는 상태에서 2~3개가 연쇄된 장애를 알람으로 감지하고, 인과 사슬을 거꾸로 따라가 근본 원인을 확정하고, 보고서로 남긴다.
 
 ## 개요
@@ -20,7 +20,7 @@ Kafka 동작을 문서가 아니라 측정값과 소스 코드로 설명하고, 
 | [Stage 1. 처리량과 용량](docs/stage1-throughput/README.md) | acks, batch.size, linger.ms, 압축, 부하를 하나씩 바꿔 처리량-지연 곡선을 재고, 그 값으로 용량을 산정한다. | 측정 리포트, 용량 산정서 |
 | [Stage 2. 리밸런싱 비교](docs/stage2-rebalance/README.md) | 설정 5개 × 장애 시나리오 4개 = 20칸을 측정하고, classic 그룹을 consumer 프로토콜로 온라인 전환했다가 되돌린다. | 5×4 결과표와 해석, 마이그레이션 런북 |
 | [Stage 3. KIP-848 버그 재현](docs/stage3-bug-repro/README.md) | KAFKA-18376(작은 `max.poll.records`에서 consumer 프로토콜 컨슈머의 CPU 과다)을 재현하고 4.1.2와 4.2.0 클라이언트를 대조해 원인 코드를 확정한다. | 재현 결과표, 원인 분석 |
-| [Stage 4. 단일 장애 훈련](docs/stage4-drills/README.md) | 장애 17종(재배치 throttle, 롤링 업그레이드, 쿼럼 상실, 컴팩션, 쿼터, unclean election 포함)을 하나씩 주입하고 알람에서 시작해 진단한다. 장애 이름과 주입 시각을 알고 시작한다. | 훈련 기록 17건 |
+| [Stage 4. 단일 장애 훈련](docs/stage4-drills/README.md) | 장애 19종(재배치 throttle, 쿼럼 상실, 컴팩션, 쿼터, unclean election, 브로커·컨슈머 버전 업그레이드와 롤백 포함)을 하나씩 주입하고 알람에서 시작해 진단한다. 장애 이름과 주입 시각을 알고 시작한다. | 훈련 기록 19건 |
 | [Stage 5. 블라인드 장애 훈련](docs/stage5-chaos/README.md) | 무작위 카드가 정해지지 않은 시점에 연쇄 장애를 일으키고, 정상 운영 사건(노이즈)이 섞인다. 감지는 알람에서 시작한다. 정답은 봉인되고 대응 후에 공개된다. | 장애 보고서와 채점 결과 |
 
 순서에는 이유가 있다.
@@ -70,7 +70,7 @@ open http://localhost:3000              # Grafana. Lab / Overview가 홈 화면�
 | [stage1-throughput/](docs/stage1-throughput/README.md) | 측정 방법(README), 프로듀서 내부와 측정 결과(01), 용량 산정(02) |
 | [stage2-rebalance/](docs/stage2-rebalance/README.md) | 측정 정의(01), 설정·시나리오별 실험(02), 마이그레이션(03) |
 | [stage3-bug-repro/](docs/stage3-bug-repro/README.md) | KAFKA-18376 재현 설계, 결과, 원인 코드, 실무 판단 |
-| [stage4-drills/](docs/stage4-drills/README.md) | 훈련 공통 규칙, 권장 순서, D01~D17 훈련별 문서 |
+| [stage4-drills/](docs/stage4-drills/README.md) | 훈련 공통 규칙, 권장 순서, D01~D19 훈련별 문서 |
 | [stage5-chaos/](docs/stage5-chaos/README.md) | 규칙, 카드 설계 기준, 비공개 카드 작성법, [채점 기준](docs/stage5-chaos/scoring.md) |
 | [troubleshooting.md](docs/troubleshooting.md) | 환경·모니터링·훈련 중 자주 발생하는 문제와 조치 |
 | [templates/](docs/templates/) | 마이그레이션 런북, 훈련 기록, 장애 보고서 양식 |
@@ -100,8 +100,10 @@ scripts/
   migration.sh            Stage 2 마이그레이션 단계 실행
   repro-18376.sh          Stage 3 버그 재현(행렬 측정, JFR 프로파일), jfr_top.py
   workload.sh             Stage 4·5 공통 워크로드
-  drill.sh, drills/       Stage 4 훈련 실행기와 훈련 정의 D01~D17
-  upgrade.sh              노드 단위 롤링 업그레이드·롤백(D13)
+  drill.sh, drills/       Stage 4 훈련 실행기와 훈련 정의 D01~D19
+  upgrade.sh              노드 단위 롤링 업그레이드·롤백(D13, D18)
+  client-upgrade.sh       컨슈머 클라이언트 버전 롤링 교체·롤백(D19)
+  continuity.py           소비 연속성 판정(유실, 중복, 처리 공백)
   chaos.sh, chaos/cards/  Stage 5 실행기와 카드 C1~C5 (정답 포함)
   lib.sh, lib-fault.sh    공통 함수, 장애 주입 원시 동작
   analyze.py, promq.py    run 분석·결과표, PromQL 조건 대기
@@ -120,5 +122,5 @@ results/chaos/            Stage 5 회차 기록 (봉인 파일은 git 제외)
 - [ ] Stage 2: 5×4 결과표를 채우고 설정별 차이를 해석했다 → [results/RESULTS.md](results/RESULTS.md)
 - [ ] Stage 2: classic → consumer 마이그레이션 런북을 작성했다 → `results/migration-runbook.md`
 - [ ] Stage 3: 재현 결과표와 원인 코드 분석을 자기 측정값으로 다시 썼다 → `results/repro-18376.md`
-- [ ] Stage 4: D01~D17 훈련 기록을 남겼다 → `results/drills/Dxx.md`
+- [ ] Stage 4: D01~D19 훈련 기록을 남겼다 → `results/drills/Dxx.md`
 - [ ] Stage 5: [완료 기준](docs/stage5-chaos/README.md#완료-기준)을 충족했다 → `results/chaos/<id>/report.md`

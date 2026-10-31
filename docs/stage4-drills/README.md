@@ -1,6 +1,6 @@
 # Stage 4. 단일 장애 훈련
 
-실무에서 자주 나는 장애 17개를 하나씩 주입하고, 알람으로 감지한 뒤 대시보드와 CLI로 원인을 좁히고 조치한다. 장애가 무엇인지 알고 시작하는 훈련이다.
+실무에서 자주 나는 장애 19개를 하나씩 주입하고, 알람으로 감지한 뒤 대시보드와 CLI로 원인을 좁히고 조치한다. 장애가 무엇인지 알고 시작하는 훈련이다.
 
 ## 목적
 
@@ -28,6 +28,8 @@
 | [D10](D10-record-too-large.md) | 큰 메시지로 인한 `RecordTooLargeException` | 프로듀서·토픽 | 프로듀서 오류 | 15분 |
 | [D14](D14-controller-quorum-loss.md) | 컨트롤러 쿼럼 상실 | 컨트롤 플레인 | 처음엔 증상 없음, 브로커 장애가 겹치면 전체 정지 | 20분 |
 | [D13](D13-rolling-upgrade.md) | 롤링 업그레이드 finalize 후 롤백 실패 | 운영 작업 | 롤백한 브로커가 시작 후 종료 | 30분 |
+| [D18](D18-rolling-upgrade-rollback.md) | 브로커 롤링 업그레이드 뒤 회귀와 finalize 전 롤백 | 운영 작업 | 업그레이드 후 프로듀서 지연 증가 | 30분 |
+| [D19](D19-client-upgrade-rollback.md) | 컨슈머 클라이언트 롤링 업그레이드 뒤 회귀와 롤백 | 운영 작업 | 업그레이드 후 lag 증가 | 25분 |
 | [D09](D09-offset-expiry.md) | 오프셋 만료 후 latest 리셋으로 인한 조용한 유실 | 오프셋 | 증상 없음(다운스트림 신고) | 25분 |
 | [D11](D11-hanging-transaction.md) | 열린 트랜잭션이 LSO를 막음 | 트랜잭션 | `read_committed` lag 증가 | 25분 |
 
@@ -39,7 +41,7 @@
 | 브로커와 복제 | D05 → D06 → D12 → D08 → D17 | D12는 D05의 "브로커 복구 후 URP 해소"가 안 되는 경우다. D17은 D08에서 한 대가 더 사라진 경우다 |
 | 저장 | D07 → D15 | 둘 다 디스크가 차지만 D15는 클리너가 정상인데 정리할 것이 없다 |
 | 프로듀서·토픽 | D10 | |
-| 컨트롤 플레인과 운영 작업 | D14 → D13 | D14에서 쿼럼의 역할을 본 뒤 D13에서 feature 버전을 다룬다. D13은 클러스터를 새로 만든다 |
+| 컨트롤 플레인과 운영 작업 | D14 → D13 → D18 → D19 | D14에서 쿼럼의 역할을 본 뒤 D13에서 finalize 후 롤백 실패를, D18에서 finalize 전 롤백을 다룬다. D13, D18은 클러스터를 새로 만들고, 끝나면 `cluster.sh reset`으로 되돌린다. D19는 같은 판단을 클라이언트 버전에서 한다 |
 | 증상과 원인이 먼 유형 | D09 → D11 | 알람이 늦거나 울리지 않는다 |
 
 ### 공통 워크로드
@@ -84,7 +86,8 @@
 | 복제 throttle | 브로커 동적 설정(`*.replication.throttled.rate`)과 토픽 설정(`*.replication.throttled.replicas`) | `fault_throttle_set`, `fault_throttle_clear` |
 | 클라이언트 쿼터 | `kafka-configs.sh --entity-type clients` | `client_quota_config`, `fault_quota_clear` |
 | 컨트롤러 장애 | 컨트롤러 컨테이너 SIGKILL | D14 |
-| 버전 교체 | 노드별 이미지 버전을 바꿔 재생성(`scripts/upgrade.sh`, 버전은 `results/runs/.node-versions.env`에 기록) | D13 |
+| 버전 교체 | 노드별 이미지 버전을 바꿔 재생성(`scripts/upgrade.sh`, 버전은 `results/runs/.node-versions.env`에 기록) | D13, D18 |
+| 클라이언트 버전 교체 | 멤버별 이미지 태그를 바꿔 재생성(`scripts/client-upgrade.sh`) | D19 |
 | 토픽 설정 | `kafka-configs.sh --entity-type topics` | D15(`lab-state` 토픽과 `state-producer`를 이 훈련에서만 띄운다) |
 
 함수는 `scripts/lib-fault.sh`에 있다. 훈련 정의는 `scripts/drills/Dxx-*.sh`에 있고, 주입·신호 판정·모범 조치·복구 판정이 함수 하나씩으로 나뉘어 있다.
@@ -118,7 +121,7 @@
 
 ## 완료 기준
 
-- [ ] 17개 훈련을 모두 직접 진단·조치했다(모범 조치에 의존하지 않은 횟수를 기록)
+- [ ] 19개 훈련을 모두 직접 진단·조치했다(모범 조치에 의존하지 않은 횟수를 기록)
 - [ ] 훈련마다 런북(증상, 진단 경로, 조치, 부작용, 알람 조건)을 작성했다 → `results/drills/`
 - [ ] 훈련마다 처음 울린 알람과 주입부터 걸린 시간을 기록하고, 알람이 놓친 훈련을 따로 모았다
 - [ ] 장애별 흔적 목록(어느 패널, 어떤 모양)을 한 장으로 정리했다 → Stage 5 진단 기준

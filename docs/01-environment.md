@@ -146,6 +146,7 @@ Stage 3 재현용 컨슈머(`BenchConsumer`)다. 정해진 레코드 수를 가�
 |---|---|---|---|
 | `process_ms` | consumer | 정수(ms) | 레코드당 처리 시간 |
 | `<member>.stall` | consumer | 정수(ms) | 다음 배치 전에 한 번 정지(1회성) |
+| `regression.<version>` | consumer | 정수(ms) | kafka-clients 버전이 일치하는 멤버의 레코드당 처리 시간을 늘린다(D19) |
 | `<member>.protocol` | consumer | `classic`/`consumer` | 다음 기동 시 프로토콜 |
 | `producer.rate` | producer | 정수 | 초당 전송 건수 |
 | `producer.skew` | producer | `<partition>:<percent>` | 전송의 일정 비율을 한 파티션으로 보냄(키 쏠림) |

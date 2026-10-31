@@ -51,7 +51,7 @@ KRaft 클러스터는 "어떤 형식의 메타데이터 레코드를 써도 되�
 
 finalize(`kafka-features.sh upgrade --release-version 4.1`)는 MV를 `4.1-IV1`(feature level 27)로 올리고, 같은 릴리스의 기본 feature인 `eligible.leader.replicas.version=1`, `kraft.version=1`도 함께 올린다. 이때부터 컨트롤러는 새 형식의 레코드를 쓸 수 있다. CLI 출력은 `group.version`(1)과 `transaction.version`(2)까지 다섯 줄 모두 "was upgraded to"라고 쓰지만, 이 둘은 4.0 릴리스 기본값과 같은 수준이다. 무엇이 실제로 바뀌었는지는 finalize 전후의 `upgrade.sh status`를 비교해야 안다.
 
-4.0.1 바이너리가 지원하는 MV는 level 26(`4.1-IV0`)까지다. 이 브로커가 등록을 요청하면 컨트롤러가 "finalized 버전을 지원하지 않는다"며 거부한다(`UNSUPPORTED_VERSION`). 브로커는 등록 거부를 치명적 오류로 처리하고 약 60초 뒤 종료한다. broker-3 로그에는 "No MetadataVersion with feature level 27"과 "Received a fatal error while waiting for the controller to acknowledge that we are caught up"이 남는다.
+4.0.1 바이너리의 운영용 MV 상한은 level 25(`4.0-IV3`)다. level 26(`4.1-IV0`)은 개발용으로 정의만 되어 있고, level 27은 정의 자체가 없다. 이 브로커가 등록을 요청하면 컨트롤러가 "finalized 버전을 지원하지 않는다"며 거부한다(`UNSUPPORTED_VERSION`). 브로커는 등록 거부를 치명적 오류로 처리하고 약 60초 뒤 종료한다. broker-3 로그에는 "No MetadataVersion with feature level 27"과 "Received a fatal error while waiting for the controller to acknowledge that we are caught up"이 남는다.
 
 되돌릴 방법은 MV를 다시 낮추는 것이다. 컨트롤러는 MV 하향을 "그 사이 버전들이 메타데이터 형식을 바꾸지 않았는가"로 판정한다. `4.0-IV2`부터 `4.1-IV1`까지는 모두 형식 변경이 없는 버전이라 `4.0-IV3`(level 25)로 낮출 수 있고, 그러면 4.0.1 브로커가 다시 합류한다. `4.0-IV1` 이하나 `--release-version 3.9`로 낮추는 것은 형식 변경을 지나야 하므로 "메타데이터를 지울 수 있다"며 거부된다. `kraft.version`은 아예 낮출 수 없다.
 
@@ -62,7 +62,7 @@ finalize(`kafka-features.sh upgrade --release-version 4.1`)는 MV를 `4.1-IV1`(f
 | 감지 | `BrokerDown`, Brokers up 2, URP | 브로커 1대 이탈 |
 | 범위 | broker-3만. 직전 작업은 broker-3 버전 변경 | 변경이 원인일 가능성이 높다 |
 | 원인 | broker-3 로그의 MV level 27 오류, 컨트롤러 로그의 "Unable to register because the broker does not support finalized version" | 바이너리가 finalized MV를 지원하지 않는다 |
-| 확인 | `upgrade.sh status`의 metadata.version finalized=27, broker-3 이미지 4.0.1 | finalize 이후 롤백 |
+| 확인 | `upgrade.sh status`의 metadata.version finalized=4.1-IV1, broker-3 이미지 4.0.1 | finalize 이후 롤백 |
 
 ### 조치 선택지
 
