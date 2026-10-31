@@ -131,7 +131,7 @@ python3 scripts/analyze.py table > /tmp/table.md
 
 > 형식 예시: "kill9에서 트리거→첫 콜백은 cooperative A초, consumer B초다(3회 중앙값). 두 값 모두 세션 타임아웃 45초 근처이고, 차이는 하트비트 주기(3초/5초) 범위 안이다. 따라서 장애 감지 시간은 프로토콜보다 세션 타임아웃 설정이 결정한다. 근거: 두 프로토콜 모두 브로커가 멤버 만료를 판정한다. classic은 `GroupMetadataManager.rescheduleClassicGroupMemberHeartbeat`, consumer는 `GroupMetadataManager.scheduleConsumerGroupSessionTimeout`."
 
-이 해석이 Phase 3 대비표의 "바뀐 이유" 열을 채우는 근거가 된다.
+이 해석이 `results/RESULTS.md`의 프로토콜 대비표를 채우는 근거가 된다.
 
 ## 4. 응용 실험 (선택)
 

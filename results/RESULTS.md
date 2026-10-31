@@ -1,4 +1,4 @@
-# Phase 4 실험 결과
+# Stage 2 리밸런싱 실험 결과
 
 > 환경: Kafka 4.1.2, controller 3 / broker 3, 파티션 12, consumer 6, RATE=600, PROCESS_MS=2, MAX_POLL_INTERVAL_MS=30000
 > 측정 횟수: 셀당 _회, 표의 값은 중앙값
@@ -62,7 +62,7 @@
 
 ### 6. 혼합 모드(마이그레이션 중) 동작
 
-## Phase 3 대비표 연결
+## classic과 consumer 프로토콜 대비
 
 | 항목 | 이 실험에서의 근거 (셀, 수치) |
 |---|---|

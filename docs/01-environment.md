@@ -44,7 +44,7 @@ flowchart LR
 | 구성 요소 | 내용 |
 |---|---|
 | 이미지 | `rebalance-lab-kafka:4.1.2` = `apache/kafka:4.1.2` + JMX exporter javaagent (`docker/kafka/Dockerfile`, `KAFKA_VERSION`으로 변경). 앱은 `rebalance-lab-app`. `cluster.sh up`이 두 이미지를 빌드하고, 디스크 정리용 `alpine:3.20`을 받는다. 노드마다 `CONTROLLER_N_VERSION`, `BROKER_N_VERSION`으로 이미지 버전을 따로 지정할 수 있고, `upgrade.sh`가 이 변수로 한 대씩 교체한다(D13). |
-| controller | `process.roles=controller`, 정적 voter 3대(`controller.quorum.voters`). 동적 quorum(KIP-853)은 Phase 6 범위다. |
+| controller | `process.roles=controller`, 정적 voter 3대(`controller.quorum.voters`). 동적 quorum(KIP-853)은 이 환경의 구성 범위 밖이다. |
 | broker | `process.roles=broker`, 내부 리스너 `broker-N:9092`, 호스트 리스너 `localhost:19092~19094` |
 | 토픽 | `lab-events`, 파티션 12, RF 3, `min.insync.replicas=2` |
 | 내부 토픽 | `__consumer_offsets` RF 3 |
@@ -84,7 +84,7 @@ classic 쪽 대응 값은 클라이언트 설정이며 4.1 기본값을 그대�
 - `prometheus targets`: controller, broker, disk-monitor가 `up`이다. 앱(consumer, producer, lag-monitor)은 실험 중에만 `up`이다.
 - `./scripts/alerts.sh`가 "알람 없음"을 출력한다. 기동 직후 몇 분은 `pending`에 일시적인 알람이 보일 수 있다.
 
-여기까지 확인했으면 Phase 1의 내용(controller quorum, ISR, `min.insync.replicas`)이 실제 클러스터에서 어떻게 보이는지도 함께 확인한 것이다.
+여기까지 확인했으면 controller quorum, ISR, `min.insync.replicas`가 실제 클러스터에서 어떻게 보이는지도 함께 확인한 것이다.
 
 ## 4. 실험 애플리케이션
 

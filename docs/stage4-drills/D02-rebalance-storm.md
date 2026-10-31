@@ -79,7 +79,7 @@ consumer 프로토콜 클라이언트는 백그라운드 스레드가 하트비�
 ### 재발 방지
 
 - 알람: `max(kafka_consumer_consumer_metrics_time_between_poll_max) > 0.8 * max.poll.interval.ms`
-- 설계 기준: `max.poll.records × p99 레코드 처리 시간 < max.poll.interval.ms / 2`. Phase 7 설계 문서에서 SLO로부터 역산한다.
+- 설계 기준: `max.poll.records × p99 레코드 처리 시간 < max.poll.interval.ms / 2`. SLO가 정해지면 이 식에서 역산한다.
 
 ### 재현 충실도
 
