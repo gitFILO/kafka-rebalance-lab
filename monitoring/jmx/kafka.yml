@@ -39,6 +39,13 @@ rules:
     name: kafka_$1_$2_$3
     type: GAUGE
 
+  # 백분위는 표본 저장소라 직전 측정이 섞인다. Mean은 누적 평균이어서 Count와 곱한 값의 차이로 구간 평균을 정확히 구한다.
+  - pattern: 'kafka.network<type=RequestMetrics, name=(\w+TimeMs), request=Produce><>Mean'
+    name: kafka_network_requestmetrics_$1_mean
+    type: GAUGE
+    labels:
+      request: Produce
+
   # Yammer histogram/timer
   - pattern: 'kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>(\d+)thPercentile'
     name: kafka_$1_$2_$3

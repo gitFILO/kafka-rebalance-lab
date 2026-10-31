@@ -75,9 +75,81 @@ broker_container() {
   case "$1" in 4) echo broker-1 ;; 5) echo broker-2 ;; 6) echo broker-3 ;; *) echo "" ;; esac
 }
 
+BROKER_IDS="4 5 6"
+
+broker_config() {
+  kafka_bin kafka-configs.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --entity-type brokers --entity-name "$1" "${@:2}" 2>&1 \
+    | grep -v '^$' || true
+}
+
+# 재배치 도구(kafka-reassign-partitions --execute --throttle)가 남기는 것과 같은 설정을 쓴다.
+# 리더 쪽은 기존 복제본, 팔로워 쪽은 새로 옮겨 가는 복제본(target_id) 목록이다.
+fault_throttle_set() {
+  local rate="$1" target_id="$2" id leaders followers
+  leaders="$(kafka_bin kafka-topics.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --describe --topic "$TOPIC" 2>/dev/null \
+    | awk -v t="$target_id" '$3 == "Partition:" {
+        p = $4; for (i = 1; i <= NF; i++) if ($i == "Replicas:") { n = split($(i + 1), r, ",");
+        for (j = 1; j <= n; j++) if (r[j] != t) out = out (out ? "," : "") p ":" r[j] } }
+      END { print out }')"
+  followers="$(kafka_bin kafka-topics.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --describe --topic "$TOPIC" 2>/dev/null \
+    | awk -v t="$target_id" '$3 == "Partition:" { out = out (out ? "," : "") $4 ":" t } END { print out }')"
+  for id in $BROKER_IDS; do
+    broker_config "$id" --alter --add-config "leader.replication.throttled.rate=$rate,follower.replication.throttled.rate=$rate" >/dev/null
+  done
+  topic_config --alter --add-config "leader.replication.throttled.replicas=[$leaders],follower.replication.throttled.replicas=[$followers]" >/dev/null
+}
+
+# CLI 한 번이 JVM 기동 1~2초다. 먼저 한 번 조회하고 실제로 있는 키만 한 번에 지운다.
+topic_clear_keys() {
+  local present
+  present="$(topic_config --describe | { grep -oE "^ *($(echo "$*" | tr ' ' '|'))=" || true; } | tr -d ' =' | sort -u | paste -sd, -)"
+  [ -n "$present" ] && topic_config --alter --delete-config "$present" >/dev/null
+  return 0
+}
+
+fault_throttle_clear() {
+  local id
+  kafka_bin kafka-configs.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --entity-type brokers --describe 2>/dev/null \
+    | awk '/^Dynamic configs for broker/ {id = $5} /throttled\.rate=/ {print id}' | sort -u | while read -r id; do
+      broker_config "$id" --alter --delete-config leader.replication.throttled.rate,follower.replication.throttled.rate >/dev/null
+    done
+  topic_clear_keys leader.replication.throttled.replicas follower.replication.throttled.replicas
+}
+
+client_quota_config() {
+  kafka_bin kafka-configs.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --entity-type clients "$@" 2>&1 | grep -v '^$' || true
+}
+
+# 출력 예: Quota configs for the default client-id are consumer_byte_rate=2048.0
+#          Quota configs for client-id 'consumer-1' are consumer_byte_rate=1.0E7
+fault_quota_clear() {
+  local line entity key
+  client_quota_config --describe | { grep '^Quota configs for' || true; } | while read -r line; do
+    case "$line" in
+      *"default client-id"*) entity="--entity-default" ;;
+      *) entity="--entity-name $(echo "$line" | sed -E "s/.*client-id '([^']+)'.*/\1/")" ;;
+    esac
+    for key in $(echo "$line" | sed 's/.* are //' | tr ',' '\n' | cut -d= -f1); do
+      # shellcheck disable=SC2086
+      client_quota_config $entity --alter --delete-config "$key" >/dev/null
+    done
+  done
+}
+
+controller_running_count() {
+  local c n=0
+  for c in controller-1 controller-2 controller-3; do
+    [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = "true" ] && n=$((n + 1))
+  done
+  echo "$n"
+}
+
 # 모든 장애 흔적을 지운다. 훈련 종료와 카오스 정리에 쓴다.
 fault_clear_all() {
-  local b k
+  local b c
+  for c in controller-1 controller-2 controller-3; do
+    [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = "true" ] || docker start "$c" >/dev/null 2>&1 || true
+  done
   for b in broker-1 broker-2 broker-3; do
     fault_unfreeze "$b"
     fault_disk_clear "$b"
@@ -85,8 +157,8 @@ fault_clear_all() {
       fault_broker_start "$b" || true
     fi
   done
-  # 설정되지 않은 키가 하나라도 섞이면 명령 전체가 거부되므로 키마다 따로 지운다.
-  for k in retention.ms segment.ms max.message.bytes; do
-    topic_config --alter --delete-config "$k" >/dev/null 2>&1 || true
-  done
+  # 설정되지 않은 키가 하나라도 섞이면 명령 전체가 거부되므로 있는 키만 고른다.
+  topic_clear_keys retention.ms segment.ms max.message.bytes unclean.leader.election.enable
+  fault_throttle_clear
+  fault_quota_clear
 }

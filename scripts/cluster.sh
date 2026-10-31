@@ -29,7 +29,7 @@ create_topic() {
   log "topic $TOPIC ready (partitions=$PARTITIONS, rf=3, min.insync.replicas=2)"
 }
 
-MONITORING_SERVICES="prometheus grafana disk-monitor"
+MONITORING_SERVICES="prometheus alertmanager grafana disk-monitor"
 
 build_images() {
   log "build images (kafka+jmx exporter, lab app)"
@@ -41,11 +41,12 @@ build_images() {
 
 wait_monitoring() {
   local deadline=$(( $(date +%s) + 90 ))
-  until curl -sf http://localhost:9090/-/ready >/dev/null && curl -sf http://localhost:3000/api/health >/dev/null; do
-    [ "$(date +%s)" -ge "$deadline" ] && die "prometheus/grafana not ready in 90s"
+  until curl -sf http://localhost:9090/-/ready >/dev/null && curl -sf http://localhost:9093/-/ready >/dev/null \
+      && curl -sf http://localhost:3000/api/health >/dev/null; do
+    [ "$(date +%s)" -ge "$deadline" ] && die "prometheus/alertmanager/grafana not ready in 90s"
     sleep 2
   done
-  log "prometheus http://localhost:9090, grafana http://localhost:3000"
+  log "prometheus http://localhost:9090, alertmanager http://localhost:9093, grafana http://localhost:3000"
 }
 
 cmd_up() {
@@ -89,6 +90,7 @@ for t in sorted(data, key=lambda t: (t["labels"]["job"], t["labels"]["instance"]
 cmd_down() {
   log "stop and remove all containers"
   compose down -v --remove-orphans
+  rm -f "$NODE_VERSIONS_FILE"
 }
 
 case "${1:-}" in

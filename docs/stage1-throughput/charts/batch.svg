@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" font-family="sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="white"/>
+<text x="70" y="22" font-size="15" font-weight="bold">batch.size별 최대 처리량</text>
+<line x1="70" y1="300.0" x2="570" y2="300.0" stroke="#e5e7eb"/>
+<text x="64" y="304.0" text-anchor="end">0</text>
+<line x1="70" y1="248.0" x2="570" y2="248.0" stroke="#e5e7eb"/>
+<text x="64" y="252.0" text-anchor="end">200</text>
+<line x1="70" y1="196.0" x2="570" y2="196.0" stroke="#e5e7eb"/>
+<text x="64" y="200.0" text-anchor="end">400</text>
+<line x1="70" y1="144.0" x2="570" y2="144.0" stroke="#e5e7eb"/>
+<text x="64" y="148.0" text-anchor="end">600</text>
+<line x1="70" y1="92.0" x2="570" y2="92.0" stroke="#e5e7eb"/>
+<text x="64" y="96.0" text-anchor="end">800</text>
+<line x1="70" y1="40.0" x2="570" y2="40.0" stroke="#e5e7eb"/>
+<text x="64" y="44.0" text-anchor="end">1000</text>
+<text x="16" y="170" transform="rotate(-90 16 170)" text-anchor="middle">MB/s</text>
+<text x="70.0" y="318" text-anchor="middle">4KB</text>
+<text x="195.0" y="318" text-anchor="middle">16KB</text>
+<text x="320.0" y="318" text-anchor="middle">64KB</text>
+<text x="445.0" y="318" text-anchor="middle">256KB</text>
+<text x="570.0" y="318" text-anchor="middle">1024KB</text>
+<text x="320" y="348" text-anchor="middle">batch.size (log)</text>
+<line x1="70" y1="300" x2="570" y2="300" stroke="#111"/>
+<path d="M70.0,287.5 L195.0,255.1 L320.0,206.2 L445.0,167.4 L570.0,177.1" fill="none" stroke="#2563eb" stroke-width="2"/>
+<circle cx="70.0" cy="287.5" r="3" fill="#2563eb"/>
+<circle cx="195.0" cy="255.1" r="3" fill="#2563eb"/>
+<circle cx="320.0" cy="206.2" r="3" fill="#2563eb"/>
+<circle cx="445.0" cy="167.4" r="3" fill="#2563eb"/>
+<circle cx="570.0" cy="177.1" r="3" fill="#2563eb"/>
+<text x="80" y="34" fill="#2563eb">MB/s</text>
+<text x="576" y="304.0">0</text>
+<text x="576" y="252.0">400</text>
+<text x="576" y="200.0">800</text>
+<text x="576" y="148.0">1200</text>
+<text x="576" y="96.0">1600</text>
+<text x="576" y="44.0">2000</text>
+<text x="626" y="170" transform="rotate(90 626 170)" text-anchor="middle">p99 ms</text>
+<path d="M70.0,115.4 L195.0,226.3 L320.0,274.8 L445.0,282.4 L570.0,282.1" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="70.0" cy="115.4" r="5" fill="#dc2626"/>
+<circle cx="195.0" cy="226.3" r="5" fill="#dc2626"/>
+<circle cx="320.0" cy="274.8" r="5" fill="#dc2626"/>
+<circle cx="445.0" cy="282.4" r="5" fill="#dc2626"/>
+<circle cx="570.0" cy="282.1" r="5" fill="#dc2626"/>
+<text x="230" y="34" fill="#dc2626">p99 ms (오른쪽 축)</text>
+</svg>

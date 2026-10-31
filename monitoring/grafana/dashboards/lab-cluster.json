@@ -43,6 +43,20 @@
      "matchAny": true,
      "limit": 500
     }
+   },
+   {
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "enable": true,
+    "iconColor": "red",
+    "name": "alerts",
+    "expr": "ALERTS{alertstate=\"firing\"}",
+    "step": "15s",
+    "titleFormat": "{{alertname}}",
+    "textFormat": "{{severity}}",
+    "useValueForTime": false
    }
   ]
  },
@@ -1109,13 +1123,133 @@
    }
   },
   {
-   "type": "row",
-   "title": "디스크와 로그",
+   "type": "timeseries",
+   "title": "Replication bytes in by broker",
+   "description": "팔로워가 리더에서 가져오는 속도. 평평하게 낮으면 복제 throttle을 의심한다",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (instance) (rate(kafka_server_brokertopicmetrics_replicationbytesin_total{job=\"broker\",topic=\"\"}[30s]))",
+     "legendFormat": "{{instance}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
    "id": 22,
-   "collapsed": false,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
    "gridPos": {
     "x": 0,
     "y": 45,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Client throttle time (ms, broker 기준)",
+   "description": "0이 아니면 클라이언트 쿼터에 걸렸다. 쿼터는 브로커마다 따로 적용된다",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (client_id) (kafka_server_fetch_throttle_time)",
+     "legendFormat": "fetch {{client_id}}",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (client_id) (kafka_server_produce_throttle_time)",
+     "legendFormat": "produce {{client_id}}",
+     "refId": "B",
+     "interval": "5s"
+    }
+   ],
+   "id": 23,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 45,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "row",
+   "title": "디스크와 로그",
+   "id": 24,
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 52,
     "w": 24,
     "h": 1
    },
@@ -1164,14 +1298,14 @@
      "interval": "5s"
     }
    ],
-   "id": 23,
+   "id": 25,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 46,
+    "y": 53,
     "w": 8,
     "h": 7
    }
@@ -1219,14 +1353,14 @@
      "interval": "5s"
     }
    ],
-   "id": 24,
+   "id": 26,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 46,
+    "y": 53,
     "w": 8,
     "h": 7
    }
@@ -1274,14 +1408,14 @@
      "interval": "5s"
     }
    ],
-   "id": 25,
+   "id": 27,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 46,
+    "y": 53,
     "w": 8,
     "h": 7
    }
@@ -1329,14 +1463,14 @@
      "interval": "5s"
     }
    ],
-   "id": 26,
+   "id": 28,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 53,
+    "y": 60,
     "w": 8,
     "h": 7
    }
@@ -1384,14 +1518,199 @@
      "interval": "5s"
     }
    ],
-   "id": 27,
+   "id": 29,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 53,
+    "y": 60,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Log size by topic (max broker)",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (topic) (sum by (instance, topic) (kafka_log_log_size{topic!~\"__.*\"}))",
+     "legendFormat": "{{topic}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 30,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 60,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Segments per partition (max)",
+   "description": "compact 토픽이 1에 머물면 활성 세그먼트만 있다는 뜻이고, 활성 세그먼트는 정리 대상이 아니다",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (topic) (kafka_log_log_numlogsegments{topic!~\"__.*\"})",
+     "legendFormat": "{{topic}}",
+     "refId": "A",
+     "interval": "5s"
+    }
+   ],
+   "id": 31,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 67,
+    "w": 8,
+    "h": 7
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Log cleaner: max dirty % / dead threads",
+   "description": "",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none"
+      }
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(kafka_log_logcleanermanager_max_dirty_percent)",
+     "legendFormat": "max dirty %",
+     "refId": "A",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(kafka_log_logcleaner_deadthreadcount)",
+     "legendFormat": "dead threads",
+     "refId": "B",
+     "interval": "5s"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(kafka_log_logcleanermanager_time_since_last_run_ms) / 1000",
+     "legendFormat": "since last run (s)",
+     "refId": "C",
+     "interval": "5s"
+    }
+   ],
+   "id": 32,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 67,
     "w": 8,
     "h": 7
    }
@@ -1399,11 +1718,11 @@
   {
    "type": "row",
    "title": "KRaft 컨트롤러",
-   "id": 28,
+   "id": 33,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 60,
+    "y": 74,
     "w": 24,
     "h": 1
    },
@@ -1451,14 +1770,14 @@
      "interval": "5s"
     }
    ],
-   "id": 29,
+   "id": 34,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 61,
+    "y": 75,
     "w": 8,
     "h": 7
    }
@@ -1506,14 +1825,14 @@
      "interval": "5s"
     }
    ],
-   "id": 30,
+   "id": 35,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 61,
+    "y": 75,
     "w": 8,
     "h": 7
    }
@@ -1561,14 +1880,14 @@
      "interval": "5s"
     }
    ],
-   "id": 31,
+   "id": 36,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 61,
+    "y": 75,
     "w": 8,
     "h": 7
    }
@@ -1626,14 +1945,14 @@
      "interval": "5s"
     }
    ],
-   "id": 32,
+   "id": 37,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 68,
+    "y": 82,
     "w": 8,
     "h": 7
    }
@@ -1691,14 +2010,14 @@
      "interval": "5s"
     }
    ],
-   "id": 33,
+   "id": 38,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 68,
+    "y": 82,
     "w": 8,
     "h": 7
    }
@@ -1706,11 +2025,11 @@
   {
    "type": "row",
    "title": "그룹 코디네이터",
-   "id": 34,
+   "id": 39,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 75,
+    "y": 89,
     "w": 24,
     "h": 1
    },
@@ -1759,14 +2078,14 @@
      "interval": "5s"
     }
    ],
-   "id": 35,
+   "id": 40,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 76,
+    "y": 90,
     "w": 8,
     "h": 7
    }
@@ -1814,14 +2133,14 @@
      "interval": "5s"
     }
    ],
-   "id": 36,
+   "id": 41,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 76,
+    "y": 90,
     "w": 8,
     "h": 7
    }
@@ -1879,14 +2198,14 @@
      "interval": "5s"
     }
    ],
-   "id": 37,
+   "id": 42,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 16,
-    "y": 76,
+    "y": 90,
     "w": 8,
     "h": 7
    }
@@ -1944,14 +2263,14 @@
      "interval": "5s"
     }
    ],
-   "id": 38,
+   "id": 43,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 83,
+    "y": 97,
     "w": 8,
     "h": 7
    }
@@ -2009,14 +2328,14 @@
      "interval": "5s"
     }
    ],
-   "id": 39,
+   "id": 44,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 8,
-    "y": 83,
+    "y": 97,
     "w": 8,
     "h": 7
    }
@@ -2024,11 +2343,11 @@
   {
    "type": "row",
    "title": "JVM",
-   "id": 40,
+   "id": 45,
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 90,
+    "y": 104,
     "w": 24,
     "h": 1
    },
@@ -2077,14 +2396,14 @@
      "interval": "5s"
     }
    ],
-   "id": 41,
+   "id": 46,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 0,
-    "y": 91,
+    "y": 105,
     "w": 12,
     "h": 7
    }
@@ -2132,14 +2451,14 @@
      "interval": "5s"
     }
    ],
-   "id": 42,
+   "id": 47,
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
    },
    "gridPos": {
     "x": 12,
-    "y": 91,
+    "y": 105,
     "w": 12,
     "h": 7
    }

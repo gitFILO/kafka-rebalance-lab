@@ -1,6 +1,6 @@
 # 01. 환경 구성
 
-실험 인프라의 구성, 기동 절차, 실험 애플리케이션의 동작 방식을 기술한다. 세 단계(Stage 1~3)가 모두 이 환경을 쓴다. 실험 전에 한 번 끝까지 읽고 `cluster.sh up`까지 진행한 뒤 [02-monitoring.md](02-monitoring.md)로 넘어간다.
+실험 인프라의 구성, 기동 절차, 실험 애플리케이션의 동작 방식을 기술한다. 다섯 단계(Stage 1~5)가 모두 이 환경을 쓴다. 실험 전에 한 번 끝까지 읽고 `cluster.sh up`까지 진행한 뒤 [02-monitoring.md](02-monitoring.md)로 넘어간다.
 
 ## 1. 사전 준비
 
@@ -10,9 +10,9 @@
 | CPU | 4코어 이상 할당 | `docker info --format '{{.NCPU}}'` |
 | python3 | 3.8 이상, 표준 라이브러리만 사용 | `python3 --version` |
 | 디스크 | 이미지와 실험 기록용 3GB 이상 | |
-| 포트 | 3000(Grafana), 9090(Prometheus), 19092~19094, 9101~9106 | `lsof -i :3000` |
+| 포트 | 3000(Grafana), 9090(Prometheus), 9093(Alertmanager), 19092~19094, 9101~9106 | `lsof -i :3000` |
 
-Stage 1의 6대 실험에서는 JVM 15개(controller 3, broker 3, consumer 6, producer, lag-monitor, disk-monitor)와 Prometheus, Grafana가 동시에 뜬다. 힙 합계는 약 3.5GB이고 Prometheus·Grafana가 약 0.5GB를 더 쓴다. 브로커 데이터는 메모리(tmpfs)에 있으므로 실제 쓴 만큼 메모리를 더 차지한다. 메모리 할당이 부족하면 GC 정지가 측정값에 섞이므로 Docker Desktop의 Resources 설정을 먼저 확인한다.
+Stage 2의 6대 실험에서는 JVM 15개(controller 3, broker 3, consumer 6, producer, lag-monitor, disk-monitor)와 Prometheus, Grafana가 동시에 뜬다. 힙 합계는 약 3.5GB이고 Prometheus·Alertmanager·Grafana가 약 0.5GB를 더 쓴다. 브로커 데이터는 메모리(tmpfs)에 있으므로 실제 쓴 만큼 메모리를 더 차지한다. 메모리 할당이 부족하면 GC 정지가 측정값에 섞이므로 Docker Desktop의 Resources 설정을 먼저 확인한다.
 
 로컬에 JDK와 Maven은 필요 없다. 애플리케이션 이미지는 Docker 멀티 스테이지 빌드로 만든다.
 
@@ -38,17 +38,18 @@ flowchart LR
   m -. CSV .-> r
   quorum & brokers & g & p & m -. ":9404" .-> prom[(Prometheus)]
   prom --> gf[Grafana :3000]
+  prom -- 알람 --> am[Alertmanager :9093]
 ```
 
 | 구성 요소 | 내용 |
 |---|---|
-| 이미지 | `rebalance-lab-kafka:4.1.2` = `apache/kafka:4.1.2` + JMX exporter javaagent (`docker/kafka/Dockerfile`, `KAFKA_VERSION`으로 변경). 앱은 `rebalance-lab-app`. `cluster.sh up`이 두 이미지를 빌드하고, 디스크 정리용 `alpine:3.20`을 받는다. |
+| 이미지 | `rebalance-lab-kafka:4.1.2` = `apache/kafka:4.1.2` + JMX exporter javaagent (`docker/kafka/Dockerfile`, `KAFKA_VERSION`으로 변경). 앱은 `rebalance-lab-app`. `cluster.sh up`이 두 이미지를 빌드하고, 디스크 정리용 `alpine:3.20`을 받는다. 노드마다 `CONTROLLER_N_VERSION`, `BROKER_N_VERSION`으로 이미지 버전을 따로 지정할 수 있고, `upgrade.sh`가 이 변수로 한 대씩 교체한다(D13). |
 | controller | `process.roles=controller`, 정적 voter 3대(`controller.quorum.voters`). 동적 quorum(KIP-853)은 Phase 6 범위다. |
 | broker | `process.roles=broker`, 내부 리스너 `broker-N:9092`, 호스트 리스너 `localhost:19092~19094` |
 | 토픽 | `lab-events`, 파티션 12, RF 3, `min.insync.replicas=2` |
 | 내부 토픽 | `__consumer_offsets` RF 3 |
-| 데이터 | broker는 named volume `broker-N-data`(tmpfs, 기본 256MB, `BROKER_DISK_MB`로 변경)를 `/var/lib/kafka-data`에 마운트한다. 용량 제한은 디스크 풀 훈련(D07)을 위한 것이다. 그래서 로그 보존 기간을 1시간으로 줄였다(`LOG_RETENTION_MS`). controller는 컨테이너 내부 `/tmp/kraft-logs`. `cluster.sh down`이면 모두 사라진다. |
-| 모니터링 | Prometheus, Grafana, disk-monitor. 상세는 [02-monitoring.md](02-monitoring.md) |
+| 데이터 | broker는 named volume `broker-N-data`(tmpfs, 기본 256MB, `BROKER_DISK_MB`로 변경)를 `/var/lib/kafka-data`에 마운트한다. 용량 제한은 디스크 풀 훈련(D07)을 위한 것이다. 그래서 보존을 시간 1시간(`LOG_RETENTION_MS`)과 파티션당 8MB(`LOG_RETENTION_BYTES`) 중 먼저 닿는 쪽으로 제한한다. 기본 부하는 브로커당 약 140KB/s라 1시간이면 약 500MB가 되므로, 실제로는 크기 제한이 먼저 걸린다. controller는 named volume `controller-N-data`(tmpfs 64MB)를 `/tmp/kraft-logs`에 마운트한다. 컨테이너를 다시 만들어도(업그레이드, 쿼럼 훈련) 메타데이터 로그가 남는다. `cluster.sh down`이면 모두 사라진다. |
+| 모니터링 | Prometheus, Alertmanager, Grafana, disk-monitor. 상세는 [02-monitoring.md](02-monitoring.md), [03-alerting.md](03-alerting.md) |
 
 파티션 12개는 컨슈머 6대일 때 멤버당 2개, 스케일 아웃 전 3대일 때 멤버당 4개로 나누어 떨어지게 정한 값이다. 할당 불균형이 측정값에 섞이지 않는다.
 
@@ -81,12 +82,13 @@ classic 쪽 대응 값은 클라이언트 설정이며 4.1 기본값을 그대�
 - `features`: `group.version` FinalizedVersionLevel이 1이다. 0이면 consumer 프로토콜을 쓸 수 없다.
 - `topic`: 12개 파티션 모두 `Isr`에 3개 브로커가 있다.
 - `prometheus targets`: controller, broker, disk-monitor가 `up`이다. 앱(consumer, producer, lag-monitor)은 실험 중에만 `up`이다.
+- `./scripts/alerts.sh`가 "알람 없음"을 출력한다. 기동 직후 몇 분은 `pending`에 일시적인 알람이 보일 수 있다.
 
 여기까지 확인했으면 Phase 1의 내용(controller quorum, ISR, `min.insync.replicas`)이 실제 클러스터에서 어떻게 보이는지도 함께 확인한 것이다.
 
 ## 4. 실험 애플리케이션
 
-`lab-app/`은 하나의 이미지로 네 가지 역할(producer, consumer, lag-monitor, disk-monitor)을 한다. 모든 기록은 `results/runs/<RUN_ID>/`에 CSV로 남고, 같은 값의 일부를 `lab_*` 메트릭으로 노출한다. 실행 중인 프로세스의 동작은 `control/` 파일로 바꾼다(아래 "런타임 제어").
+`lab-app/`은 하나의 이미지로 여러 역할(producer, consumer, lag-monitor, disk-monitor, state-producer, bench)을 한다. 모든 기록은 `results/runs/<RUN_ID>/`에 CSV로 남고, 같은 값의 일부를 `lab_*` 메트릭으로 노출한다. 실행 중인 프로세스의 동작은 `control/` 파일로 바꾼다(아래 "런타임 제어").
 
 ### producer
 
@@ -123,6 +125,14 @@ Admin API로 1초마다 다음을 기록한다. 컨슈머 내부 상태와 별�
 - `members.csv`: 멤버별 client id, instance id, member epoch, `upgraded`(consumer 그룹 안에서 consumer 프로토콜을 쓰는지), 할당 파티션
 - `lag.csv`: 커밋 오프셋 기준 파티션별 lag과 합계
 - 메트릭: 그룹 상태(`lab_group_state_active`), 멤버 수, epoch, 파티션별 lag·committed·log end offset·last stable offset(`read_committed` 기준 LSO)
+
+### state-producer
+
+D15 컴팩션 훈련에서만 띄운다. 키 `STATE_KEYS`(기본 1,000)개 중 하나를 무작위로 골라 초당 `STATE_RATE`(400)건, 값 `STATE_VALUE_BYTES`(250B)를 컴팩션 토픽 `STATE_TOPIC`(`lab-state`)에 쓴다. 같은 키가 계속 덮어써지므로 컴팩션이 돌면 토픽 크기가 일정하게 유지되고, 멈추면 계속 커진다.
+
+### bench
+
+Stage 3 재현용 컨슈머(`BenchConsumer`)다. 정해진 레코드 수를 가능한 한 빨리 읽고 처리량, CPU 시간, 컨텍스트 스위치를 출력한다. `scripts/repro-18376.sh`가 띄운다.
 
 ### disk-monitor
 
@@ -165,8 +175,9 @@ Admin API로 1초마다 다음을 기록한다. 컨슈머 내부 상태와 별�
 | `ISOLATION_LEVEL` | read_uncommitted | 컨슈머 `isolation.level` |
 | `AUTO_OFFSET_RESET` | latest | 컨슈머 `auto.offset.reset` |
 | `POISON_POLICY`, `POISON_RETRIES`, `POISON_BACKOFF_MS` | retry, 10, (정책별) | poison 레코드 처리 정책 |
-| `BROKER_DISK_MB` | 256 | 브로커 데이터 볼륨 크기. 바꾸면 `cluster.sh reset`이 필요하다 |
-| `LOG_RETENTION_MS` | 3600000 | 브로커 `log.retention.ms`. 256MB 디스크가 차지 않도록 1시간으로 둔다(`log.roll.ms` 60000). 늘리면 `BROKER_DISK_MB`도 늘린다. Stage 3은 페이로드가 커서 토픽 설정으로 10분을 쓴다 |
+| `BROKER_DISK_MB` | 256 | 브로커 데이터 볼륨 크기. Stage 1은 1024로 띄운다. 바꾸면 `cluster.sh reset`이 필요하다 |
+| `LOG_RETENTION_MS` | 3600000 | 브로커 `log.retention.ms`(`log.roll.ms` 60000). Stage 5는 페이로드가 커서 토픽 설정으로 10분을 쓴다 |
+| `LOG_RETENTION_BYTES` | 8388608 | 브로커 `log.retention.bytes`(파티션당). 12파티션 × 8MB에 `__consumer_offsets`와 세그먼트 여유를 더해 256MB 안에 들어간다. 늘리면 `BROKER_DISK_MB`도 늘린다 |
 | `OFFSETS_RETENTION_MINUTES` | 10080 | 브로커 `offsets.retention.minutes`(D09에서 1로 줄인다) |
 
 기본값에서 컨슈머 1대의 부하는 파티션 2개 × 50건/초 × 2ms = 처리 능력의 20%다. 리밸런싱 후 backlog를 따라잡을 여유를 남기면서도 lag 피크가 눈에 보이도록 잡은 값이다.

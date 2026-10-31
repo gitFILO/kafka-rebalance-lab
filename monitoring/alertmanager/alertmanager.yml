@@ -1,0 +1,27 @@
+# 실습 환경은 외부로 알림을 보내지 않는다. 알람은 Alertmanager UI(9093)와 scripts/alerts.sh로 본다.
+# 실무 연결(Slack, PagerDuty) 방법은 docs/03-alerting.md "실무 연결"을 따른다.
+route:
+  receiver: lab-null
+  group_by: [alertname]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+  routes:
+    - matchers: [severity="page"]
+      receiver: lab-null
+      group_wait: 0s
+
+receivers:
+  - name: lab-null
+
+inhibit_rules:
+  # 브로커가 내려가 있으면 복제 지연은 그 결과다. 원인 알람 하나만 남긴다.
+  - source_matchers: [alertname="BrokerDown"]
+    target_matchers: [alertname=~"UnderReplicatedPartitions|ProduceLatencyHigh"]
+  - source_matchers: [alertname="NoActiveController"]
+    target_matchers: [alertname="ControllerQuorumDegraded"]
+  - source_matchers: [alertname="BrokerDiskSpaceCritical"]
+    target_matchers: [alertname="BrokerDiskSpaceLow"]
+    equal: [broker]
+  - source_matchers: [alertname="ConsumerLagCritical"]
+    target_matchers: [alertname="ConsumerLagGrowing"]

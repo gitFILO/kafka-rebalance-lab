@@ -51,6 +51,15 @@ class Board:
                    "options": {"showValue": "never", "mergeValues": True, "rowHeight": 0.8},
                    "targets": self._targets([(expr, legend)])}, w, h)
 
+    def table(self, title, expr, w=24, h=5, desc="", hide=(), order=()):
+        self._add({"type": "table", "title": title, "description": desc,
+                   "fieldConfig": {"defaults": {}, "overrides": []},
+                   "options": {"showHeader": True, "cellHeight": "sm"},
+                   "targets": [{"datasource": DS, "expr": expr, "refId": "A", "instant": True, "format": "table"}],
+                   "transformations": [{"id": "organize", "options": {
+                       "excludeByName": {k: True for k in ("Time", "Value", "__name__") + tuple(hide)},
+                       "indexByName": {k: i for i, k in enumerate(order)}}}]}, w, h)
+
     def _targets(self, targets):
         out = []
         for i, t in enumerate(targets):
@@ -88,6 +97,9 @@ class Board:
                 {"datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": True,
                  "iconColor": "orange", "name": "lab markers",
                  "target": {"type": "tags", "tags": ["lab"], "matchAny": True, "limit": 500}},
+                {"datasource": DS, "enable": True, "iconColor": "red", "name": "alerts",
+                 "expr": 'ALERTS{alertstate="firing"}', "step": "15s", "titleFormat": "{{alertname}}",
+                 "textFormat": "{{severity}}", "useValueForTime": False},
             ]},
             "links": [{"title": t, "type": "link", "url": "/d/" + u} for t, u in self.links],
             "panels": self.panels,
@@ -102,6 +114,14 @@ LINKS = [("Overview", "lab-overview"), ("Cluster", "lab-cluster"), ("Clients", "
 
 def overview():
     b = Board("lab-overview", "Lab / Overview", LINKS)
+    b.row("알람")
+    b.stat("Firing (page)", 'count(ALERTS{alertstate="firing",severity="page"}) or vector(0)',
+           thresholds=[(1, "red")], w=3, h=5, desc="즉시 대응. docs/03-alerting.md 런북")
+    b.stat("Firing (ticket)", 'count(ALERTS{alertstate="firing",severity="ticket"}) or vector(0)',
+           thresholds=[(1, "orange")], w=3, h=5, desc="업무 시간 대응")
+    b.table("Firing alerts", 'ALERTS{alertstate="firing"}', w=18, h=5,
+            desc="Prometheus가 평가한 알람. 억제(inhibit) 여부는 Alertmanager(9093)에서 본다",
+            hide=("alertstate", "job", "instance"), order=("severity", "alertname", "area"))
     b.row("클러스터 상태")
     b.stat("Active controller", "sum(kafka_controller_kafkacontroller_activecontrollercount)",
            thresholds=[(0, "red"), (1, "green"), (2, "red")], desc="정상은 1. 0이면 쿼럼 상실")
@@ -212,6 +232,13 @@ def cluster():
     b.ts("Offline replicas / failed ISR updates", [
         ("kafka_server_replicamanager_offlinereplicacount", "offline {{instance}}"),
         ("increase(kafka_server_replicamanager_failedisrupdates_total[1m])", "failed isr update {{instance}}")])
+    b.ts("Replication bytes in by broker", [
+        ('sum by (instance) (rate(kafka_server_brokertopicmetrics_replicationbytesin_total{job="broker",topic=""}' + W + "))",
+         "{{instance}}")], unit="Bps", desc="팔로워가 리더에서 가져오는 속도. 평평하게 낮으면 복제 throttle을 의심한다")
+    b.ts("Client throttle time (ms, broker 기준)", [
+        ("max by (client_id) (kafka_server_fetch_throttle_time)", "fetch {{client_id}}"),
+        ("max by (client_id) (kafka_server_produce_throttle_time)", "produce {{client_id}}")], unit="ms",
+         desc="0이 아니면 클라이언트 쿼터에 걸렸다. 쿼터는 브로커마다 따로 적용된다")
 
     b.row("디스크와 로그")
     b.ts("Disk free by broker", [("lab_disk_usablebytes", "{{broker}}")], unit="bytes")
@@ -223,6 +250,15 @@ def cluster():
     b.ts("Log flush p99 (ms)", [('kafka_log_logflushstats_logflushrateandtimems{quantile="0.99"}', "{{instance}}")],
          unit="ms")
     b.ts("Offline log dirs", [("kafka_log_logmanager_offlinelogdirectorycount", "{{instance}}")], steps=True)
+    b.ts("Log size by topic (max broker)", [
+        ("max by (topic) (sum by (instance, topic) (kafka_log_log_size{topic!~\"__.*\"}))", "{{topic}}")], unit="bytes")
+    b.ts("Segments per partition (max)", [
+        ("max by (topic) (kafka_log_log_numlogsegments{topic!~\"__.*\"})", "{{topic}}")], steps=True,
+         desc="compact 토픽이 1에 머물면 활성 세그먼트만 있다는 뜻이고, 활성 세그먼트는 정리 대상이 아니다")
+    b.ts("Log cleaner: max dirty % / dead threads", [
+        ("max(kafka_log_logcleanermanager_max_dirty_percent)", "max dirty %"),
+        ("max(kafka_log_logcleaner_deadthreadcount)", "dead threads"),
+        ("max(kafka_log_logcleanermanager_time_since_last_run_ms) / 1000", "since last run (s)")])
 
     b.row("KRaft 컨트롤러")
     b.ts("Raft current leader (as seen by node)", [("kafka_server_raft_metrics_current_leader", "{{instance}}")],

@@ -1,11 +1,11 @@
 # 02. 모니터링 (Prometheus + Grafana)
 
-모든 단계에서 같은 대시보드로 클러스터와 클라이언트를 관측한다. `cluster.sh up`이 Kafka와 함께 Prometheus, Grafana, disk-monitor를 띄우므로 별도 기동 절차는 없다.
+모든 단계에서 같은 대시보드로 클러스터와 클라이언트를 관측한다. `cluster.sh up`이 Kafka와 함께 Prometheus, Alertmanager, Grafana, disk-monitor를 띄우므로 별도 기동 절차는 없다.
 
 ## 목적
 
-- Stage 1에서는 CSV 분석 결과(리밸런싱 시간, 정지 파티션, lag 피크)가 대시보드에서 어떤 모양으로 보이는지 대응시킨다. 이후 단계에서는 CSV 없이 대시보드만으로 같은 판단을 해야 한다.
-- Stage 2에서는 장애마다 어떤 패널에 어떤 흔적이 남는지 목록을 만든다. 이 목록이 Stage 3 블라인드 훈련의 진단 근거가 된다.
+- Stage 2에서는 CSV 분석 결과(리밸런싱 시간, 정지 파티션, lag 피크)가 대시보드에서 어떤 모양으로 보이는지 대응시킨다. 이후 단계에서는 CSV 없이 대시보드만으로 같은 판단을 해야 한다.
+- Stage 4에서는 장애마다 어떤 패널에 어떤 흔적이 남는지 목록을 만든다. 이 목록이 Stage 5 블라인드 훈련의 진단 근거가 된다.
 - 실무 대시보드를 설계할 때 필요한 메트릭 이름, 단위, 함정(윈도우, 누적값, 샘플링 주기)을 미리 익힌다. 커리큘럼 Phase 6의 대시보드 산출물과 이어진다.
 
 ## 개요
@@ -39,14 +39,15 @@ flowchart LR
 | Prometheus | `prom/prometheus:v3.5.0`, `http://localhost:9090`. 5초 간격 수집, 3일 보존. 대상은 `monitoring/prometheus/prometheus.yml`의 컨테이너 이름을 5초마다 DNS로 찾는다(`dns_sd_configs`). 컨테이너가 없으면 대상 목록에서 빠지며 정상이다(예: 증설 전 consumer-4~6). |
 | Grafana | `grafana/grafana-oss:12.1.1`, `http://localhost:3000`. 익명 Admin으로 로그인 없이 연다. 데이터소스와 대시보드는 프로비저닝된다. |
 | disk-monitor | 브로커는 로그 디렉터리 여유 공간을 JMX로 내보내지 않는다. 브로커 데이터 볼륨을 읽기 전용으로 마운트해 `lab_disk_*`로 노출하는 보조 프로세스다. |
-| 어노테이션 | 스크립트의 `mark()`가 Grafana annotation API로 이벤트(주입, 재시작, 조치)를 남긴다. 대시보드의 주황색 세로선이다. Stage 3에서는 정답이 드러나므로 끈다(`LAB_ANNOTATE=0`). |
+| 어노테이션 | 두 종류다. 스크립트의 `mark()`가 Grafana annotation API로 남기는 실험 이벤트(주입, 재시작, 조치)는 주황색 세로선이고, Stage 5에서는 정답이 드러나므로 끈다(`LAB_ANNOTATE=0`). Prometheus `ALERTS{alertstate="firing"}`에서 읽는 알람 구간은 빨간 구간이고 항상 켜져 있다. |
+| 알람 | Prometheus가 `monitoring/prometheus/rules/lab-alerts.yml`을 평가하고 Alertmanager(`http://localhost:9093`)로 보낸다. 상세는 [03-alerting.md](03-alerting.md) |
 
 ### 대시보드
 
 | 대시보드 | 용도 | 주요 패널 |
 |---|---|---|
-| Lab / Overview | 첫 화면. 이상 여부와 영향 범위를 판단한다. | 클러스터 상태(active controller, URP, under min ISR, offline, 디스크 여유), 생산·브로커 유입·소비 처리량, 그룹 상태 타임라인, 커밋 lag(합계·파티션별), 멤버별 할당, 커밋 실패, 브로커별 Produce/Fetch p99 |
-| Lab / Cluster | 브로커·컨트롤러 원인 분석 | 처리량, 요청 핸들러·네트워크 유휴율, 요청 지연 p99와 분해(remote/local/queue), purgatory, ISR shrink/expand, 리더 수, 디스크와 로그 크기, log start offset, Raft 리더·epoch·커밋 지연, 그룹 코디네이터 |
+| Lab / Overview | 첫 화면. 이상 여부와 영향 범위를 판단한다. | 알람(발화 중인 page·ticket 수, 발화 중 알람 표), 클러스터 상태(active controller, URP, under min ISR, offline, 디스크 여유), 생산·브로커 유입·소비 처리량, 그룹 상태 타임라인, 커밋 lag(합계·파티션별), 멤버별 할당, 커밋 실패, 브로커별 Produce/Fetch p99 |
+| Lab / Cluster | 브로커·컨트롤러 원인 분석 | 처리량, 요청 핸들러·네트워크 유휴율, 요청 지연 p99와 분해(remote/local/queue), purgatory, ISR shrink/expand, 복제 유입(throttle 확인), 클라이언트 throttle 시간, 리더 수, 디스크와 로그 크기, 토픽별 로그 크기, 파티션당 세그먼트 수, 로그 클리너 dirty 비율·중단 스레드, log start offset, Raft 리더·epoch·커밋 지연, 그룹 코디네이터 |
 | Lab / Clients | 컨슈머·프로듀서 원인 분석 | 멤버·파티션별 처리량, fetch lag, poll 간격, poll idle ratio, 하트비트·커밋 지연, 리밸런싱 지연, poison·오프셋 점프, HW-LSO 차이, 프로듀서 지연·오류·버퍼·노드별 지연 |
 
 대시보드 JSON은 `monitoring/grafana/gen_dashboards.py`가 생성한다. 패널을 바꾸려면 생성기를 수정하고 `python3 monitoring/grafana/gen_dashboards.py`를 실행한 뒤 Grafana를 새로 고친다. UI에서 직접 고친 내용은 컨테이너를 다시 만들면 사라진다.
@@ -60,9 +61,9 @@ flowchart LR
 open http://localhost:3000     # Lab / Overview가 홈 화면
 ```
 
-클러스터 상태 줄이 Active controller 1, Brokers up 3, 나머지 0이면 정상이다. 앱을 띄우기 전이므로 흐름과 그룹 패널은 비어 있다.
+클러스터 상태 줄이 Active controller 1, Brokers up 3, 나머지 0이면 정상이다. 그 위 알람 줄의 Firing 수가 모두 0이어야 한다. 앱을 띄우기 전이므로 흐름과 그룹 패널은 비어 있다.
 
-### 2. Stage 1 실험 1칸을 대시보드로 따라가기
+### 2. Stage 2 실험 1칸을 대시보드로 따라가기
 
 ```bash
 ./scripts/run.sh cooperative kill9
@@ -97,6 +98,7 @@ python3 scripts/promq.py wait 'lab_group_totallag' '<' 500 --timeout 300
 | poll 간격 위험 | `max(kafka_consumer_consumer_metrics_time_between_poll_max)` |
 | 프로듀서가 막히는가 | `kafka_producer_producer_metrics_bufferpool_wait_ratio`, `rate(lab_producer_skippedtotal[30s])` |
 | 디스크 여유율 | `lab_disk_usablebytes / lab_disk_totalbytes` |
+| 지금 발화 중인 알람 | `ALERTS{alertstate="firing"}` |
 
 ## 메트릭 이름 규칙
 
@@ -124,4 +126,6 @@ python3 scripts/promq.py wait 'lab_group_totallag' '<' 500 --timeout 300
 
 ## 재현 충실도
 
-Prometheus 수집 간격(5초)과 클라이언트 메트릭 윈도우(30초) 때문에 1초 미만의 사건은 대시보드에 보이지 않는다. Stage 1의 정밀 수치는 CSV 분석(`analyze.py`)이 기준이고, 대시보드는 경향과 상관관계를 보는 도구로 쓴다.
+Prometheus 수집 간격(5초)과 클라이언트 메트릭 윈도우(30초) 때문에 1초 미만의 사건은 대시보드에 보이지 않는다. Stage 2의 정밀 수치는 CSV 분석(`analyze.py`)이 기준이고, 대시보드는 경향과 상관관계를 보는 도구로 쓴다.
+
+수집도 비용이다. 브로커 exporter 수집은 브로커당 평균 0.39초 걸리고 5초마다 돈다. Stage 1에서 수집을 켠 측정과 멈춘 측정을 번갈아 재 보니 초당 32만 건까지는 차이가 없고, 초당 48만 건의 p99는 멈추면 6ms, 켜면 20ms였다. 부하가 높을수록 영향이 커진다.
